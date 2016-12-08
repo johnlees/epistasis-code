@@ -37,6 +37,7 @@
 
 // Classes
 #include "pair.hpp"
+#include "link_function.hpp"
 
 // Constants
 const std::string VERSION = "0.1";
@@ -54,8 +55,8 @@ struct cmdOptions
    double log_cutoff;
    double chi_cutoff;
 
-   size_t min_ac;
-   size_t max_ac;
+   size_t min_af;
+   size_t max_af;
 
    long int chunk_start;
    long int chunk_end;
@@ -65,7 +66,31 @@ struct cmdOptions
    std::string struct_file;
 };
 
-//TODO
 // Function headers for each cpp file
 
+// epistasis.cpp
+std::vector<std::string> readCsvLine(std::istream& is);
+
+// common.cpp
+cmdOptions verifyCommandLine(boost::program_options::variables_map& vm, double num_samples);
+arma::vec dlib_to_arma(const column_vector& dlib_vec);
+column_vector arma_to_dlib(const arma::vec& arma_vec);
+arma::mat inv_covar(arma::mat A);
+int fileStat(const std::string& filename);
+
+// cmdLine.cpp
+int parseCommandLine (int argc, char *argv[], po::variables_map& vm);
+void printHelp(po::options_description& help);
+
+// logisticRegression.cpp
+void doLogit(Pair& p, const double null_ll);
+void newtonRaphson(Pair& p, const arma::vec& y_train, const arma::mat& x_design, const bool firth);
+arma::mat varCovarMat(const arma::mat& x, const arma::mat& b);
+arma::vec predictLogitProbs(const arma::mat& x, const arma::vec& b);
+
+// stats.cpp
+double chiTest(Pair& p);
+double nullLogLikelihood(const arma::mat& x, const arma::vec& y);
+double likelihoodRatioTest(Pair& p, const double null_ll);
+double normalPval(double testStatistic);
 

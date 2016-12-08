@@ -111,10 +111,10 @@ double nullLogLikelihood(const arma::mat& x, const arma::vec& y)
 
    if (x.n_cols > 1)
    {
-      Pair null_pair(x.n_rows, 0, 0);
+      Pair null_pair(x.n_rows);
 
-      null_pair.add_x(x);
-      null_pair.add_y(y);
+      null_pair.add_x(x, 0);
+      null_pair.add_y(y, 0);
 
       doLogit(null_pair);
       null_ll = null_pair.log_likelihood();

@@ -41,44 +41,31 @@ cmdOptions verifyCommandLine(boost::program_options::variables_map& vm, double n
    {
       verified.chunk_start = vm["chunk_start"].as<long int>();
    }
+   else
+   {
+      verified.chunk_start = 0;
+   }
 
    if (vm.count("chunk_end"))
    {
       verified.chunk_end = vm["chunk_end"].as<long int>();
    }
+   else
+   {
+      verified.chunk_end = 0;
+   }
 
    // Error check filtering options
-   verified.min_words = 0;
-   if (vm.count("mac"))
+   double maf_in = vm["maf"].as<double>();
+   if (maf_in >= 0 && maf_in <= 0.5)
    {
-      int min_ac_in = vm["mac"].as<int>();
-      if (min_ac_in >= 0)
-      {
-         verified.min_ac = min_ac_in;
-      }
-      else
-      {
-         throw std::runtime_error("couldn't process min_words argument");
-      }
+      verified.min_af = num_samples * maf_in;
+      verified.max_af = 1 - verified.min_af;
    }
    else
    {
-      double maf_in = vm["maf"].as<double>();
-      if (maf_in >= 0)
-      {
-         verified.min_ac = static_cast<unsigned int>(num_samples * maf_in);
-      }
-      else
-      {
-         throw std::runtime_error("could process maf argument");
-      }
+      throw std::runtime_error("could process maf argument");
    }
-
-   if (verified.min_ac > num_samples)
-   {
-      throw std::runtime_error("couldn't process maf/mac argument");
-   }
-   verified.max_ac = num_samples - verified.min_ac;
 
    return verified;
 }

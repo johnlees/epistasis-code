@@ -7,8 +7,8 @@
 
 #include "pair.hpp"
 
-Pair::Pair(int number_samples, long int bact_line, long int human_line)
-   :_number_samples(number_samples), _bact_line(bact_line), _human_line(human_line), _maf_x(0), _maf_y(0), _chisq_p(1), _lrt_p(1), _log_likelihood(0), _beta(0), _se(0), _comment(pair_comment_default), _covars_set(0), _firth(0)
+Pair::Pair(int number_samples)
+   :_number_samples(number_samples), _bact_line(0), _human_line(0), _maf_x(0), _maf_y(0), _chisq_p(1), _lrt_p(1), _log_likelihood(0), _beta(0), _se(0), _comment(pair_comment_default), _covars_set(0), _firth(0)
 {
 }
 
@@ -19,13 +19,13 @@ std::ostream& operator<<(std::ostream &os, const Pair& p)
    os << std::fixed << std::setprecision(3) << p.human_line() << "\t" << p.bact_line()
       << "\t" << std::get<0>(maf) << "\t" << std::get<1>(maf)
       << "\t" << std::scientific << p.chisq_p() << "\t" << p.p_val()
-      << "\t" << p.beta() << "\t" << p.se() << "\t" << p.comments();
+      << "\t" << p.beta() << "\t" << p.comments();
 
    return os;
 }
 
 // Set the x and maf
-void Pair::add_x(const std::vector<std::string>& variant)
+void Pair::add_x(const std::vector<std::string>& variant, const long int human_line)
 {
    if (variant.size() != _number_samples)
    {
@@ -52,10 +52,14 @@ void Pair::add_x(const std::vector<std::string>& variant)
    }
 
    _maf_x = (double)accu(_x)/n_elem(_x);
+
+   // stats also get reset
+   _human_line = human_line;
+   this.reset_stats();
 }
 
 // Set the y and maf
-void Pair::add_y(const std::vector<std::string>& variant)
+void Pair::add_y(const std::vector<std::string>& variant, const long int bact_line)
 {
    if (variant.size() != _number_samples)
    {
@@ -79,6 +83,10 @@ void Pair::add_y(const std::vector<std::string>& variant)
    }
 
    _maf_y = (double)accu(_y)/_y.n_elem;
+
+   // stats also get reset
+   _bact_line = bact_line;
+   this.reset_stats();
 }
 
 
@@ -118,5 +126,16 @@ arma::mat Pair::get_x_design()
    }
 
    return x_design;
+}
+
+void Pair::reset_stats()
+{
+   _chisq_p = 1
+   _lrt_p = 1
+   _log_likelihood = 0
+   _beta = 0
+   _se = 0
+   _comment = pair_comment_default
+   _firth(0)
 }
 

@@ -1,23 +1,38 @@
 /*
- * File: seerMain.cpp
+ * File: epistasis.cpp
  *
- * Reads command line input to seer, and controls relevant functions
+ * Main control loop for epistasis
  *
  */
 
-#include "seer.hpp"
+#include "epistasis.hpp"
 
 int main (int argc, char *argv[])
 {
+   // Read line of file to get size
+   // Read cmd line options and process
+   // Open the struct object, check size ok
+   // Make a new pair obj to be used throughout, set covars
+   // Open the human file, read through until required chunk
+   // Read in all the bacterial variants
+   // Read a human line (define sub to do this here) - outer loop
+   // Set x
+   // Set y - inner loop
+   // Check maf filter
+   // Run chisq test, check filter
+   // Run logistic test
+   // Print results
+   // Set a new y (automatically resets stats)
+
    // Program description
-   std::cerr << "seer: sequence element enrichment analysis\n";
+   std::cerr << "epistasis: pairwise correlations between variants in two populations\n";
 
    // Do parsing and checking of command line params
    // If no input options, give quick usage rather than full help
    boost::program_options::variables_map vm;
    if (argc == 1)
    {
-      std::cerr << "Usage: seer -k dsm.txt.gz -p data.pheno --struct mds.dsm.txt.gz\n\n"
+      std::cerr << "Usage: epistasis -b bacterial_snps_indels.csv.gz -h human_snps.csv.gz --struct all_structure\n\n"
          << "For full option details run seer -h\n";
       return 0;
    }
@@ -26,228 +41,169 @@ int main (int argc, char *argv[])
       return 1;
    }
 
-   // Open .pheno file, parse into vector of samples
-   std::vector<Sample> samples;
-   std::unordered_map<std::string,int> sample_map;
-
-   if (vm.count("pheno"))
+   // Open human file to get number of samples
+   std::vector<std::string> human_variant;
+   igzstream human_in;
+   if (vm.count("human"))
    {
-      readPheno(vm["pheno"].as<std::string>(), samples, sample_map);
+      human_in.open(vm["pheno"].as<std::string>().c_str());
+      human_variant = readCsvLine(human_in);
+      fs.close();
    }
    else
    {
-      throw std::runtime_error("--pheno option is compulsory");
+      throw std::runtime_error("--human option is compulsory");
    }
 
-   arma::vec y = constructVecY(samples);
-   int continuous_phenotype = continuousPhenotype(samples);
+   int num_samples = human_variant.size();
+
+   // Error check command line options
+   cmdOptions parameters = verifyCommandLine(vm, num_samples);
 
    // Get mds values
    arma::mat mds;
    int use_mds = 0;
-   if (vm.count("struct"))
+   if (fileStat(parameters.struct_file))
    {
-      mds = readMDS(vm["struct"].as<std::string>(), samples);
-      use_mds = 1;
+      arma::mat mds;
+      mds.load(parameters.struct_file);
 
-      if (mds.n_rows != samples.size())
+      if (mds.n_rows != num_samples)
       {
          throw std::runtime_error("Number of rows in MDS matrix does not match number of samples");
       }
-   }
-
-   // Set up covariates
-   if (vm.count("covar_file") && vm.count("covar_list"))
-   {
-      // File reading/parsing may fail
-      try
+      else
       {
-         arma::mat covariate_matrix =
-            parseCovars(vm["covar_file"].as<std::string>(), vm["covar_list"].as<std::string>());
-
-         if (covariate_matrix.n_rows != samples.size())
-         {
-            throw std::runtime_error("Covariate row size does not match number of samples");
-         }
-
-         if (use_mds)
-         {
-            mds = arma::join_rows(mds, covariate_matrix);
-         }
-         else
-         {
-            mds = covariate_matrix;
-            use_mds = 1;
-         }
-      }
-      catch (std::exception& e)
-      {
-         std::cerr << "Could not process covariates: " << std::endl;
-         std::cerr << e.what() << std::endl;
+         use_mds = 1;
+         std::cerr << "WARNING: Struct file loaded. IT IS UP TO YOU to make sure the order of samples is the same as in each matrix\n";
       }
    }
-
-   // Disambiguate overloaded logistic functions by the type of parameter they
-   // take
-   void (*mdsLogitFunc)(Kmer&, const arma::vec&, const double, const arma::mat&) = &logisticTest;
-   void (*logitFunc)(Kmer&, const arma::vec&, const double) = &logisticTest;
-
-   void (*mdsLinearFunc)(Kmer&, const arma::vec&, const double, const arma::mat&) = &linearTest;
-   void (*linearFunc)(Kmer&, const arma::vec&, const double) = &linearTest;
-
-   // Error check command line options
-   cmdOptions parameters = verifyCommandLine(vm, samples);
 
    // calculate the null log-likelihood
-   Kmer null_kmer;
-   arma::mat x(y.n_rows, 1, arma::fill::ones);
+   arma::mat x(num_samples, 1, arma::fill::ones);
    if (use_mds)
    {
       x = join_rows(x, mds);
    }
 
-   double null_ll = nullLogLikelihood(x, y, continuous_phenotype);
+   double null_ll = nullLogLikelihood(x, y);
 
-   // Open the dsm kmer ifstream, and read through the whole thing
-   igzstream kmer_file;
-   openDsmFile(kmer_file, parameters.kmers);
+   // Open the human variant ifstream, and read through until the required
+   // block is reached
+   igzstream human_file;
+   human_file.open(parameters.human_file);
+
+   if (parameters.chunk_start != 0 && parameters.chunk_end != 0)
+   {
+      if (parameters.chunk_start >= parameters.chunk_end)
+      {
+         throw std::runtime_error("chunk start greater than or equal to chunk end");
+      }
+      else
+      {
+         std::cerr << "Reading to chunk position: line " << parameters.chunk_start << std::endl;
+         std::string line;
+         for (int i = 0; i < parameters.chunk_start - 1; i++)
+         {
+            std::getline(human_file, line);
+         }
+      }
+   }
+
+   // Read in all the bacterial variants (3Mb compressed - shouldn't be too bad
+   // in this form I hope)
+   std::cerr << "Reading in all bacterial variants" << std::endl;
+   igzstream bacterial_file;
+   bacterial_file.open(parameters.bacterial_file);
+
+   std::vector<Pair> all_pairs;
+   long int line_nr = 1;
+   while (bacterial_file)
+   {
+      std::vector<std::string> bacterial_variant = readCsvLine(bacterial_file);
+      Pair bact_in(num_samples);
+      bact_in.add_y(bacterial_variant, line_nr);
+      if (use_mds)
+      {
+         bact_in.add_covar(mds);
+      }
+
+      all_pairs.push_back(bact_in);
+      line_nr++;
+   }
 
    // Write a header
-   std::string header = "sequence\tmaf\tchisq_p_val\twald_p_val\tlrt_p_val\tbeta\tse";
-   if (use_mds)
+   std::cerr << "Starting association tests" << std::endl;
+   std::string header = "human_line\tbact_line\thuman_af\tbacterial_af\tchisq_p_val\tlogistic_p_val\tlrt_p_val\tbeta\tcomments";
+   std::cout << header << std::endl;
+
+   // Read the block of human lines
+   igzstream human_file;
+   human_file.open(parameters.human_file);
+
+   line_nr = 1;
+   long int read_pairs = 0;
+   long int tested_pairs = 0;
+   long int significant_pairs = 0;
+   while (human_file)
    {
-      std::cout << header;
-      for (unsigned int i = 1; i <= mds.n_cols; ++i)
+      std::vector<std::string> human_variant = readCsvLine(human_file);
+      // Test each human variant against every bacterial variant
+      for (auto it = all_pairs.begin(); it < all_pairs.end(); it++)
       {
-         std::cout << "\tcovar" << i << "_p";
-      }
-      std::cout << "\tcomments";
-   }
-   else
-   {
-      std::cout << header << "\tcomments";
-   }
-   if (parameters.print_samples)
-   {
-      std::cout << "\tsamples_present";
-   }
-   std::cout << std::endl;
+         it->add_x(human_variant, line_nr);
 
-   long int input_line = 0;
-   long int tested_kmers = 0;
-   long int significant_kmers = 0;
-   while (kmer_file)
-   {
-      // Parse a set of dsm lines
-      std::vector<Kmer> kmer_lines;
-      kmer_lines.reserve(parameters.num_threads);
-
-      Kmer k;
-      while(kmer_lines.size() < parameters.num_threads && kmer_file)
-      {
-         kmer_file >> k;
-         k.set_line_nr(++input_line);
-
-         if (kmer_file)
+         // maf filter
+         std::tuple<double,double> mafs = it->maf();
+         if (!(std::get<0>(maf) < parameters.min_af || std::get<0>(maf) > parameters.max_af || std::get<1>(maf) < parameters.min_af || std::get<1>(maf) > parameters.max_af))
          {
-            k.add_x(sample_map, samples.size());
+            it->chisq_p(chiTest(*it));
+            read_pairs++;
 
-            // apply filters here
-            if (!parameters.filter)
+            if (chisq_p < parameters.chi_cutoff)
             {
-               kmer_lines.push_back(k);
-               tested_kmers++;
-            }
-            else if (passBasicFilters(parameters, k) && passStatsFilters(parameters, k, y, continuous_phenotype))
-            {
-#ifdef SEER_DEBUG
-               std::cerr << "kmer " + k.sequence() + " seems significant\n";
-#endif
-               kmer_lines.push_back(k);
-               tested_kmers++;
-            }
-         }
-      }
-
-      // Thread from here...
-      std::vector<std::thread> threads;
-      threads.reserve(kmer_lines.size());
-
-      for (unsigned int i = 0; i<kmer_lines.size(); ++i)
-      {
-         // Association test
-         // Note threads must be passed values as they are copied
-         // std::reference_wrapper allows references to be passed
-         if (use_mds)
-         {
-            if (continuous_phenotype)
-            {
-               threads.push_back(std::thread(mdsLinearFunc, std::ref(kmer_lines[i]), std::cref(y), null_ll, std::cref(mds)));
-            }
-            else
-            {
-               threads.push_back(std::thread(mdsLogitFunc, std::ref(kmer_lines[i]), std::cref(y), null_ll, std::cref(mds)));
-            }
-         }
-         else
-         {
-            if (continuous_phenotype)
-            {
-               threads.push_back(std::thread(linearFunc, std::ref(kmer_lines[i]), std::cref(y), null_ll));
-            }
-            else
-            {
-               threads.push_back(std::thread(logitFunc, std::ref(kmer_lines[i]), std::cref(y), null_ll));
-            }
-         }
-      }
-
-      for (unsigned int i = 0; i<threads.size(); ++i)
-      {
-         // Rejoin in order
-         threads[i].join();
-
-         // Print in order when all threads complete
-         if (kmer_lines[i].p_val() < parameters.log_cutoff || kmer_lines[i].lrt_p_val() < parameters.log_cutoff)
-         {
-            significant_kmers++;
-            // Caclculate chisq value if not already done so in filtering
-            if (kmer_lines[i].unadj() == kmer_chi_pvalue_default)
-            {
-               if (continuous_phenotype)
+               doLogit(*it, null_ll);
+               tested_pairs++;
+               if (it->p_val() < parameters.log_cutoff)
                {
-                  kmer_lines[i].unadj_p_val(welchTwoSamplet(kmer_lines[i], y));
-               }
-               else
-               {
-                  kmer_lines[i].unadj_p_val(chiTest(kmer_lines[i], y));
+                  significant_pairs++;
                }
             }
 
-            std::cout << kmer_lines[i];
-            if (parameters.print_samples)
-            {
-               std::vector<std::string> samples_found = kmer_lines[i].occurrence_vector();
-               std::cout << "\t";
-               // Doing this for all samples leaves trailing whitespace, so
-               // write the last sample separately
-               if (samples_found.size() > 1)
-               {
-                  std::copy(samples_found.begin(), samples_found.end() - 1, std::ostream_iterator<std::string>(std::cout, "\t"));
-               }
-               std::cout << samples_found.back();
-            }
-            std::cout << std::endl;
-
+            std::cout << *it << std::endl;
          }
       }
-      // ...to here
+
+      if (line_nr > (chunk_end - chunk_start))
+      {
+         break;
+      }
+      else
+      {
+         line_nr++;
+      }
    }
 
-   std::cerr << "Read " << input_line - 1 << " total k-mers. Of these:\n";
-   std::cerr << "\tPre-filtered " << input_line - tested_kmers - 1 << " k-mers\n";
-   std::cerr << "\tTested " << tested_kmers << " k-mers\n";
-   std::cerr << "\tPrinted " << significant_kmers << " k-mers\n";
+   std::cerr << "Processed " << line_nr * all_pairs.size() << " total pairs. Of these:\n";
+   std::cerr << "\tPassed maf filter:\t" << read_pairs << std::endl;
+   std::cerr << "\tPassed chi^2 filter:\t" << tested_pairs << std::endl;
+   std::cerr << "\tPassed p-val (logistic) filter:\t" << significant_pairs << std::endl;
    std::cerr << "Done.\n";
+}
+
+std::vector<std::string> readCsvLine(std::istream& is)
+{
+   std::vector<std::string> variant;
+   std::string line;
+   std::getline(is, line);
+
+   std::stringstream line_stream(line);
+   std::string value;
+
+   while(std::getline(line_stream, value, ','))
+   {
+      variant.push_back(value)
+   }
+   return variant;
 }
 

@@ -22,7 +22,7 @@ class Pair
 {
    public:
       // Initialisation
-      Pair(int number_samples, long int bact_line, long int human_line);
+      Pair(int number_samples);
 
       // nonmodifying operations
       long int bact_line() const { return _bact_line; }
@@ -53,6 +53,7 @@ class Pair
       void add_x(const std::vector<std::string>& variant); // this is defined in pair.cpp
       void add_y(const std::vector<std::string>& variant); // this is defined in pair.cpp
       void add_covar(const arma::mat& covars); // this is defined in pair.cpp
+      void reset_stats(); // this is defined in pair.cpp
 
    private:
       int _number_samples;

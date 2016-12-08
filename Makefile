@@ -14,7 +14,7 @@ CPPFLAGS=-I$(PREFIX)/include -I../gzstream -I../dlib -I/usr/local/hdf5/include -
 
 PROGRAMS=epistasis
 
-OBJECTS=pair.o stats.o logitFunction.o logisticRegression.o common.o cmdLine.o epistasis.o
+OBJECTS=pair.o logitFunction.o stats.o logisticRegression.o common.o cmdLine.o epistasis.o
 
 all: $(PROGRAMS)
 
