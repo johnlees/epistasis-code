@@ -1,51 +1,55 @@
 /*
- * File: seerChiFilter
+ * File: stats
  *
- * Implements chi^2 and welch two sample t test for seer and kmds filtering
+ * Implements chi^2 test
  *
  */
 
-#include "seer.hpp"
+#include "epistasis.hpp"
 
 const double normalArea = pow(2*M_PI, -0.5);
 
 // Basic chi^2 test, using contingency table
-double chiTest(Kmer& k, const arma::vec& y)
+double chiTest(Pair& p)
 {
-   arma::mat x = k.get_x();
+   arma::mat x = p.get_x();
+   arma::vec y = p.get_y();
 
    double chisq = 0;
 
    // Contigency table
-   //         unaffected affected
-   // present a          b
-   // absent  c          d
+   //          human 0   human 1   human 2
+   // bact 0   a         b         c
+   // bact 1   d         e         f
    //
    // Use doubles for compatibility with det function in arma::mat
-   double a = 0, b = 0, c = 0, d = 0;
+   double a = 0, b = 0, c = 0, d = 0, e = 0, f = 0;
 
    arma::vec::const_iterator j = y.begin();
    for (arma::vec::const_iterator i = x.begin(); i!=x.end(); ++i)
    {
       if (*j == 0) {
          if (*i == 0){
-            c++;
-         } else {
             a++;
+         } else if (*i == 1){
+            b++;
+         } else {
+            c++;
          }
       } else {
          if (*i == 0){
             d++;
+         } else if (*i == 1){
+            e++;
          } else {
-            b++;
+            f++;
          }
-      }
       j++;
    }
 
-   arma::mat::fixed<2, 2> table = {a, b, c, d};
+   arma::mat::fixed<2, 3> table = {a, b, c, d, e, f};
 #ifdef SEER_DEBUG
-   arma::Mat<int>::fixed<2, 2> tab_out = {int (a), int (b), int (c), int(d)};
+   arma::Mat<int>::fixed<2, 3> tab_out = {int (a), int (b), int (c), int(d), int(e), int(f)};
    std::cerr << tab_out << "\n";
 #endif
 
@@ -63,21 +67,36 @@ double chiTest(Kmer& k, const arma::vec& y)
    {
       if (*obs <= 1 || (*obs <= 5 && ++low_obs > 2))
       {
-         k.add_comment("bad-chisq");
-         k.firth(1);
+         p.add_comment("bad-chisq");
+         p.firth(1);
          break;
       }
    }
 
-   // Without Yates' continuity correction
-   chisq = N * pow(det(table), 2);
+   // With Yates' continuity correction
+   double chisq = 0;
+
+   double total = accu(table);
+   arma::vec col_sum = sum(table, 0);
+   arma::vec row_sum = sum(table, 1);
+
    for (int i = 0; i < 2; ++i)
    {
-      chisq /= accu(table.row(i)) * accu(table.col(i));
+      for (int j = 0; j < 3; j++)
+      {
+         double expected = row_sum[i] * col_sum[j] / total;
+         chisq += pow((std::abs(table[i,j] - expected) - 0.5), 2) / expected;
+      }
    }
 
-   // For df = 1, as here, chi^2 == N(0,1)^2 (standard normal dist.)
-   double p_value = normalPval(pow(chisq, 0.5));
+   boost::math::chi_squared_distribution chi_dist(2);
+   double p_value = 1 - boost::math::cdf(chi_dist, chisq);
+
+   if (p_value = 0)
+   {
+      p_value = normalPval(pow(chisq, 0.5));
+      p.add_comment("chi-large");
+   }
 #ifdef SEER_DEBUG
    std::cerr << "chisq:" << chisq << "\n";
    std::cerr << "chisq p: " << p_value << "\n";
@@ -85,88 +104,36 @@ double chiTest(Kmer& k, const arma::vec& y)
    return p_value;
 }
 
-// Welch two sample t-test, for continuous phenotypes
-double welchTwoSamplet(const Kmer& k, const arma::vec& y)
-{
-   arma::mat x = k.get_x();
-
-   // Subset into present and absent groups
-   arma::vec group1 = y.elem(find(x==0));
-   arma::vec group2 = y.elem(find(x==1));
-
-   // Calculate group means and variances
-   double p_val = 0;
-   if (group1.n_elem != 0 && group2.n_elem != 0)
-   {
-      double x1 = mean(group1);
-      double x2 = mean(group2);
-      double v1 = var(group1);
-      double v2 = var(group2);
-
-      // t and degrees freedom for test
-      double t = (x1 - x2)*pow((v1/group1.n_rows + v2/group2.n_rows), -0.5);
-      double df = pow((v1/group1.n_rows + v2/group2.n_rows), 2) / (pow(v1/group1.n_rows,2)/(group1.n_rows-1) + pow(v2/group2.n_rows,2)/(group2.n_rows-1));
-
-      // Calculate p-value from t distribution
-      boost::math::students_t t_dist(df);
-      p_val = 2 * (1 - boost::math::cdf(t_dist, std::abs(t)));
-#ifdef SEER_DEBUG
-      std::cerr << "welch t:" << t << "df:" << df << "\n";
-      std::cerr << "welch p-val:" << p_val << "\n";
-#endif
-
-      // Seen some errors where cdf = 0, p = 2
-      // hack for now, but should just use regression on every site
-      if (p_val > 1)
-      {
-         p_val = 1;
-      }
-   }
-
-   return p_val;
-}
-
 // Fit null models for null log-likelihoods
-double nullLogLikelihood(const arma::mat& x, const arma::vec& y, const int continuous)
+double nullLogLikelihood(const arma::mat& x, const arma::vec& y)
 {
    double null_ll = 0;
-   Kmer null_kmer;
+
    if (x.n_cols > 1)
    {
-      if (continuous)
-      {
-         doLinear(null_kmer, y, x);
-      }
-      else
-      {
-         doLogit(null_kmer, y, x);
-      }
-      null_ll = null_kmer.log_likelihood();
+      Pair null_pair(x.n_rows, 0, 0);
+
+      null_pair.add_x(x);
+      null_pair.add_y(y);
+
+      doLogit(null_pair);
+      null_ll = null_pair.log_likelihood();
    }
    else
    {
       dlib::matrix<double,1,1> intercept;
 
-      if (continuous)
-      {
-         intercept(0) = mean(y);
-         LinearLikelihood likelihood_fit(x, y);
-         null_ll = 2*likelihood_fit(intercept);
-      }
-      else
-      {
-         intercept(0) = log(mean(y)/(1-mean(y))); // null is: intercept = log-odds of success
-         LogitLikelihood likelihood_fit(x, y);
-         null_ll = likelihood_fit(intercept);
-      }
+      intercept(0) = log(mean(y)/(1-mean(y))); // null is: intercept = log-odds of success
+      LogitLikelihood likelihood_fit(x, y);
+      null_ll = likelihood_fit(intercept);
    }
    return null_ll;
 }
 
 // Likelihood-ratio test
-double likelihoodRatioTest(Kmer& k, const double null_ll, const int continuous)
+double likelihoodRatioTest(Pair& p, const double null_ll)
 {
-   double log_likelihood = k.log_likelihood();
+   double log_likelihood = p.log_likelihood();
    double lrt_p = 1;
    if (log_likelihood == 0 || null_ll == 0)
    {
@@ -174,27 +141,7 @@ double likelihoodRatioTest(Kmer& k, const double null_ll, const int continuous)
    }
    else
    {
-      double lrt = 0;
-      if (continuous)
-      {
-         // R0 = y - Xb for model 0 betas etc
-         // Using LRT = n * (1-R1/R0) as a quick estimate for sigma
-         // from econweb.rutgers.edu/klein/classes/fall08/e401/handouts/lrtests.pdf
-         //
-         // sigma = R0*R1 would be better, but doesn't matter too much as
-         // I don't think this will be too useful
-         //
-         // Properly in:
-         // MEASUREMENT SCIENCE REVIEW, Volume 9, Section 1, No. 1, 2009
-         // 10.2478/v10048-009-0003-9
-         // Exact Likelihood Ratio Test for the Parameters of the Linear
-         // Regression Model with Normal Errors
-         lrt = k.get_x().n_rows * (1-log_likelihood/null_ll);
-      }
-      else
-      {
-         lrt = pow(2*(log_likelihood - null_ll), 0.5);
-      }
+      lrt = pow(2*(log_likelihood - null_ll), 0.5);
 
       if (lrt > 0)
       {
@@ -232,24 +179,4 @@ double normalPval(double testStatistic)
    return p_val;
 }
 
-int passStatsFilters(const cmdOptions& filterOptions, Kmer& k, const arma::vec& y, const int continuous_phenotype)
-{
-   int passed = 1;
-
-   if (continuous_phenotype)
-   {
-      k.unadj_p_val(welchTwoSamplet(k, y));
-   }
-   else
-   {
-      k.unadj_p_val(chiTest(k, y));
-   }
-
-   if (k.unadj() > filterOptions.chi_cutoff)
-   {
-      passed = 0;
-   }
-
-   return passed;
-}
 
