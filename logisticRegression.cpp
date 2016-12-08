@@ -1,43 +1,22 @@
 /*
- * File: seerBinaryAssoc.cpp
+ * File: logisticRegression.cpp
  *
- * Implements logistic regression association tests for seer
+ * Implements logistic regression association tests
  *
  */
 
-#include "seer.hpp"
-
-// Logistic fit without covariates
-void logisticTest(Kmer& k, const arma::vec& y_train, const double null_ll)
-{
-   // Train classifier
-   arma::mat x_train = arma::join_rows(arma::mat(y_train.n_rows,1,arma::fill::ones), k.get_x());
-   doLogit(k, y_train, x_train);
-
-   // Likelihood ratio test
-   k.lrt_p_val(likelihoodRatioTest(k, null_ll));
-}
-
-// Logistic fit with covariates
-void logisticTest(Kmer& k, const arma::vec& y_train, const double null_ll, const arma::mat& mds)
-{
-   // Train classifier
-   arma::mat x_train = arma::join_rows(arma::mat(y_train.n_rows,1,arma::fill::ones), k.get_x());
-   x_train = arma::join_rows(x_train, mds);
-   doLogit(k, y_train, x_train);
-
-   // Likelihood ratio test
-   k.lrt_p_val(likelihoodRatioTest(k, null_ll));
-}
+#include "linkFunction.hpp" // includes epistasis.hpp
 
 // This uses BFGS optimisation by default. Invokes NR or Firth on error
-void doLogit(Kmer& k, const arma::vec& y_train, const arma::mat& x_design)
+void doLogit(Pair& p)
 {
+   arma::mat x_design = p.get_x_design();
+   arma::vec y_train = p.get_y();
    column_vector starting_point(x_design.n_cols);
 
-   if (k.firth())
+   if (p.firth())
    {
-      newtonRaphson(k, y_train, x_design, 1);
+      newtonRaphson(p, y_train, x_design, 1);
    }
    else
    {
@@ -60,9 +39,9 @@ void doLogit(Kmer& k, const arma::vec& y_train, const arma::mat& x_design)
 
          // Extract beta and likelihood
          arma::vec b_vector = dlib_to_arma(starting_point);
-         k.beta(b_vector(1));
+         p.beta(b_vector(1));
 
-         k.log_likelihood(likelihood_fit(starting_point));
+         p.log_likelihood(likelihood_fit(starting_point));
 
          // Extract p-value
          //
@@ -82,23 +61,15 @@ void doLogit(Kmer& k, const arma::vec& y_train, const arma::mat& x_design)
          }
          else
          {
-            k.standard_error(se);
+            p.standard_error(se);
 
             double W = std::abs(b_vector(1)) / se; // null hypothesis b_1 = 0
-            k.p_val(normalPval(W));
+            p.p_val(normalPval(W));
 
 #ifdef SEER_DEBUG
             std::cerr << "Wald statistic: " << W << "\n";
-            std::cerr << "p-value: " << k.p_val() << "\n";
+            std::cerr << "p-value: " << p.p_val() << "\n";
 #endif
-            // Add in covariate p-values
-            for (unsigned int i = 2; i < var_covar_mat.n_rows; ++i)
-            {
-               se = pow(var_covar_mat(i,i), 0.5);
-               W = std::abs(b_vector(i)) / se;
-
-               k.add_covar_p(normalPval(W));
-            }
          }
       }
       // Sometimes won't converge, use N-R instead
@@ -111,21 +82,21 @@ void doLogit(Kmer& k, const arma::vec& y_train, const arma::mat& x_design)
          // SE is greater than specified limit - run Firth regression
          if (strcmp(e.what(), "se>limit") == 0)
          {
-            k.add_comment("large-se");
-            newtonRaphson(k, y_train, x_design, 1);
+            p.add_comment("large-se");
+            newtonRaphson(p, y_train, x_design, 1);
          }
          // BFGS optimiser did not converge - use NR iterations w/o Firth first
          // Could also be matrix inversion failing
          else
          {
-            k.add_comment("bfgs-fail");
-            newtonRaphson(k, y_train, x_design);
+            p.add_comment("bfgs-fail");
+            newtonRaphson(p, y_train, x_design, 0);
          }
       }
    }
 }
 
-void newtonRaphson(Kmer& k, const arma::vec& y_train, const arma::mat& x_design, const bool firth)
+void newtonRaphson(Pair& p, const arma::vec& y_train, const arma::mat& x_design, const bool firth)
 {
    // Keep iterations to track convergence
    // Also useful to keep second derivative, for calculating p-value
@@ -155,9 +126,9 @@ void newtonRaphson(Kmer& k, const arma::vec& y_train, const arma::mat& x_design,
       var_covar_mat = inv_covar(x_design.t() * (W % x_design));
       if (var_covar_mat.n_cols == 0 || var_covar_mat.n_rows == 0)
       {
-         k.add_comment("inv-fail");
-         k.p_val(0);
-         std::cerr << "Inversion at input line " << k.line_number() << " failed" << std::endl;
+         p.add_comment("inv-fail");
+         p.p_val(0);
+         std::cerr << "Inversion at input line " << p.bact_line() << "," << p.human_line() << " failed" << std::endl;
          failed = 1;
          break;
       }
@@ -198,12 +169,12 @@ void newtonRaphson(Kmer& k, const arma::vec& y_train, const arma::mat& x_design,
    {
       if (!firth)
       {
-         k.add_comment("nr-fail");
-         newtonRaphson(k, y_train, x_design, 1);
+         p.add_comment("nr-fail");
+         newtonRaphson(p, y_train, x_design, 1);
       }
       else
       {
-         k.add_comment("firth-fail");
+         p.add_comment("firth-fail");
       }
    }
    else if (!failed)
@@ -212,48 +183,40 @@ void newtonRaphson(Kmer& k, const arma::vec& y_train, const arma::mat& x_design,
       column_vector converged_beta = arma_to_dlib(parameter_iterations.back());
 
       LogitLikelihood likelihood_fit(x_design, y_train);
-      if (k.firth())
+      if (p.firth())
       {
-         k.log_likelihood(likelihood_fit(converged_beta) + 0.5*log(det(inv_covar(var_covar_mat))));
+         p.log_likelihood(likelihood_fit(converged_beta) + 0.5*log(det(inv_covar(var_covar_mat))));
       }
       else
       {
-         k.log_likelihood(likelihood_fit(converged_beta));
+         p.log_likelihood(likelihood_fit(converged_beta));
       }
 
-      k.beta(converged_beta(1));
+      p.beta(converged_beta(1));
 
       double se = pow(var_covar_mat(1,1), 0.5);
-      k.standard_error(se);
+      p.standard_error(se);
 
       // Deal with large SEs
       if (se > se_limit)
       {
          if (!firth)
          {
-            newtonRaphson(k, y_train, x_design, 1);
+            newtonRaphson(p, y_train, x_design, 1);
          }
          else
          {
-            k.add_comment("large-se");
+            p.add_comment("large-se");
          }
       }
 
-      double W = std::abs(k.beta()) / se;
-      k.p_val(normalPval(W));
+      double W = std::abs(p.beta()) / se;
+      p.p_val(normalPval(W));
 
 #ifdef SEER_DEBUG
       std::cerr << "Wald statistic: " << W << "\n";
-      std::cerr << "p-value: " << k.p_val() << "\n";
+      std::cerr << "p-value: " << p.p_val() << "\n";
 #endif
-      // Add in covariate p-values
-      for (unsigned int i = 2; i< var_covar_mat.n_rows; ++i)
-      {
-         se = pow(var_covar_mat(i,i), 0.5);
-         W = std::abs(parameter_iterations.back()(i)) / se;
-
-         k.add_covar_p(normalPval(W));
-      }
    }
 }
 

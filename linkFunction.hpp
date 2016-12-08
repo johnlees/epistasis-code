@@ -1,9 +1,9 @@
 /*
  * linkFunction.hpp
- * Header file for logitFunction and linearFunction class
+ * Header file for logitFunction class
 */
 
-#include "seercommon.hpp"
+#include "epistasis.hpp"
 
 class LinkFunction
 {
@@ -49,24 +49,3 @@ class LogitLikelihoodGradient : public LinkFunction
       column_vector operator() (const column_vector& parameters_in) const;
 };
 
-class LinearLikelihood : public LinkFunction
-{
-   public:
-      LinearLikelihood(const arma::mat& _predictors, const arma::vec& _responses, const double _lambda = 0)
-         : LinkFunction(_predictors, _responses, _lambda)
-      {
-      }
-
-      double operator() (const column_vector& parameters_in) const;
-};
-
-class LinearLikelihoodGradient : public LinkFunction
-{
-   public:
-      LinearLikelihoodGradient(const arma::mat& _predictors, const arma::vec& _responses, const double _lambda = 0)
-         : LinkFunction(_predictors, _responses, _lambda)
-      {
-      }
-
-      column_vector operator() (const column_vector& parameters_in) const;
-};

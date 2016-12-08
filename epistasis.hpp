@@ -28,28 +28,31 @@
 // Boost headers
 #include <boost/program_options.hpp>
 #include <boost/math/distributions/normal.hpp>
-#include <boost/math/distributions/students_t.hpp>
+#include <boost/math/distributions/chi_squared.hpp>
 
 // Armadillo/dlib headers
 #define ARMA_DONT_PRINT_ERRORS
 #include <armadillo>
 #include <dlib/matrix.h>
 
+// dlib headers
+#include <dlib/optimization.h>
+
 // Classes
-#include "kmer.hpp"
-#include "sample.hpp"
-#include "covar.hpp"
+#include "pair.hpp"
 
 // Constants
-const std::string VERSION = "1.2alpha2";
-//    Default options
-const double maf_default = 0.01;
-const long int max_length_default = 100;
-const std::string chisq_default = "10e-5";
+extern const std::string VERSION;
+extern const double maf_default;
+extern const long int max_length_default;
+extern const std::string chisq_default;
+extern const std::string pval_default;
+extern const double convergence_limit;
+extern const unsigned int max_nr_iterations;
+extern const double se_limit;
+extern const double bfgs_start_beta;
 
 typedef dlib::matrix<double,0,1> column_vector;
-
-const std::string sample_suffix = ".samples";
 
 // Structs
 struct cmdOptions
@@ -57,58 +60,42 @@ struct cmdOptions
    double log_cutoff;
    double chi_cutoff;
 
-   long int max_length;
-   long int size;
-   int filter;
-   int pc;
-   int print_samples;
-   int write_distances;
-   unsigned int num_threads;
-   size_t min_words;
-   size_t max_words;
+   size_t min_af;
+   size_t max_af;
 
-   std::string pheno;
-   std::string kmers;
-   std::string output;
+   long int chunk_start;
+   long int chunk_end;
+
+   std::string bact_file;
+   std::string human_file;
+   std::string struct_file;
 };
 
-// Function headers
-//    seerCommon.cpp
-cmdOptions verifyCommandLine(boost::program_options::variables_map& vm, const std::vector<Sample>& samples);
-void verifyMDSOptions(cmdOptions& verified, boost::program_options::variables_map& vm);
+// Function headers for each cpp file
 
+// epistasis.cpp
+std::vector<std::string> readCsvLine(std::istream& is);
+
+// common.cpp
+cmdOptions verifyCommandLine(boost::program_options::variables_map& vm, double num_samples);
 arma::vec dlib_to_arma(const column_vector& dlib_vec);
 column_vector arma_to_dlib(const arma::vec& arma_vec);
-arma::mat vecToMat(const std::vector<std::string>& in_col);
-void normaliseMatCols(arma::mat& matrix_in);
-
-int continuousPhenotype (const std::vector<Sample>& sample_list);
-
 arma::mat inv_covar(arma::mat A);
-
-// seerErr headers
-void badCommand(const std::string& command, const std::string& value);
-
-// seerIO headers
-void readPheno(const std::string& filename, std::vector<Sample>& samples, std::unordered_map<std::string,int>& sample_map);
-void openDsmFile(igzstream& dsm_file, const std::string& file_name);
-
-arma::vec constructVecY(const std::vector<Sample>& samples);
-arma::vec constructVecX(const Kmer& k, const std::vector<Sample>& samples);
-
-arma::mat readHDF5(const std::string& file_name);
-
-void writeMDS(const std::string& file_name, const std::vector<Sample>& sample_names, const arma::mat& MDS);
-void writeDistances(const std::string& file_name, const arma::mat& distances);
-arma::mat readMDS(const std::string& file_name, const std::vector<Sample>& sample_names);
-arma::mat readMDSList(const std::string& filename);
-
-arma::mat parseCovars(const std::string& file, const std::string& columns);
-std::vector<std::tuple<int,bool>> parseCovarColumns(const std::string& columns);
-arma::mat encodeDummy(const std::vector<std::string>& in_col);
-
 int fileStat(const std::string& filename);
 
-// seerFilter headers
-int passBasicFilters(const cmdOptions& filterOptions, const Kmer& k);
+// cmdLine.cpp
+int parseCommandLine (int argc, char *argv[], boost::program_options::variables_map& vm);
+void printHelp(boost::program_options::options_description& help);
+
+// logisticRegression.cpp
+void doLogit(Pair& p);
+void newtonRaphson(Pair& p, const arma::vec& y_train, const arma::mat& x_design, const bool firth);
+arma::mat varCovarMat(const arma::mat& x, const arma::mat& b);
+arma::vec predictLogitProbs(const arma::mat& x, const arma::vec& b);
+
+// stats.cpp
+double chiTest(Pair& p);
+double nullLogLikelihood(const arma::mat& x, const arma::vec& y);
+double likelihoodRatioTest(Pair& p, const double null_ll);
+double normalPval(double testStatistic);
 
