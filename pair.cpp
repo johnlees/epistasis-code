@@ -7,15 +7,17 @@
 
 #include "pair.hpp"
 
+const std::string pair_comment_default = "NA";
+
 Pair::Pair(int number_samples)
-   :_number_samples(number_samples), _bact_line(0), _human_line(0), _maf_x(0), _maf_y(0), _chisq_p(1), _lrt_p(1), _log_likelihood(0), _beta(0), _se(0), _comment(pair_comment_default), _covars_set(0), _firth(0)
+   :_number_samples(number_samples), _bact_line(0), _human_line(0), _covars_set(0), _maf_x(0), _maf_y(0), _chisq_p(1), _lrt_p(1), _log_likelihood(0), _beta(0), _se(0), _comment(pair_comment_default), _firth(0)
 {
 }
 
 // Print fields tab sep, identical to input. Doesn't print newline
 std::ostream& operator<<(std::ostream &os, const Pair& p)
 {
-   auto maf = p.maf()
+   auto maf = p.maf();
    os << std::fixed << std::setprecision(3) << p.human_line() << "\t" << p.bact_line()
       << "\t" << std::get<0>(maf) << "\t" << std::get<1>(maf)
       << "\t" << std::scientific << p.chisq_p() << "\t" << p.p_val()
@@ -51,11 +53,18 @@ void Pair::add_x(const std::vector<std::string>& variant, const long int human_l
       i++;
    }
 
-   _maf_x = (double)accu(_x)/n_elem(_x);
+   _maf_x = (double)accu(_x)/_x.n_elem;
 
    // stats also get reset
    _human_line = human_line;
-   this.reset_stats();
+   this->reset_stats();
+}
+
+// For null ll
+void Pair::add_x(const arma::vec x)
+{
+   _x = x;
+   _human_line = 0;
 }
 
 // Set the y and maf
@@ -86,9 +95,15 @@ void Pair::add_y(const std::vector<std::string>& variant, const long int bact_li
 
    // stats also get reset
    _bact_line = bact_line;
-   this.reset_stats();
+   this->reset_stats();
 }
 
+// For null ll
+void Pair::add_y(const arma::vec y)
+{
+   _y = y;
+   _bact_line = 0;
+}
 
 // Add covariates
 void Pair::add_covar(const arma::mat& covars)
@@ -130,12 +145,12 @@ arma::mat Pair::get_x_design()
 
 void Pair::reset_stats()
 {
-   _chisq_p = 1
-   _lrt_p = 1
-   _log_likelihood = 0
-   _beta = 0
-   _se = 0
-   _comment = pair_comment_default
-   _firth(0)
+   _chisq_p = 1;
+   _lrt_p = 1;
+   _log_likelihood = 0;
+   _beta = 0;
+   _se = 0;
+   _comment = pair_comment_default;
+   _firth = 0;
 }
 

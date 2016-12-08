@@ -7,6 +7,21 @@
 
 #include "epistasis.hpp"
 
+// Constants
+const std::string VERSION = "0.1";
+//    Default options
+const double maf_default = 0.01;
+const long int max_length_default = 100;
+const std::string chisq_default = "1";
+const std::string pval_default = "1";
+const double convergence_limit = 10e-8;
+const unsigned int max_nr_iterations = 1000;
+const double se_limit = 3;
+
+// Starting value for beta vectors (except intercept)
+// Should be >0. This value is based on RMS in example study
+const double bfgs_start_beta = 1;
+
 int main (int argc, char *argv[])
 {
    // Read line of file to get size
@@ -43,19 +58,18 @@ int main (int argc, char *argv[])
 
    // Open human file to get number of samples
    std::vector<std::string> human_variant;
-   igzstream human_in;
    if (vm.count("human"))
    {
+      igzstream human_in;
       human_in.open(vm["pheno"].as<std::string>().c_str());
       human_variant = readCsvLine(human_in);
-      fs.close();
    }
    else
    {
       throw std::runtime_error("--human option is compulsory");
    }
 
-   int num_samples = human_variant.size();
+   size_t num_samples = human_variant.size();
 
    // Error check command line options
    cmdOptions parameters = verifyCommandLine(vm, num_samples);
@@ -86,12 +100,10 @@ int main (int argc, char *argv[])
       x = join_rows(x, mds);
    }
 
-   double null_ll = nullLogLikelihood(x, y);
-
    // Open the human variant ifstream, and read through until the required
    // block is reached
    igzstream human_file;
-   human_file.open(parameters.human_file);
+   human_file.open(parameters.human_file.c_str());
 
    if (parameters.chunk_start != 0 && parameters.chunk_end != 0)
    {
@@ -114,7 +126,7 @@ int main (int argc, char *argv[])
    // in this form I hope)
    std::cerr << "Reading in all bacterial variants" << std::endl;
    igzstream bacterial_file;
-   bacterial_file.open(parameters.bacterial_file);
+   bacterial_file.open(parameters.bact_file.c_str());
 
    std::vector<Pair> all_pairs;
    long int line_nr = 1;
@@ -138,8 +150,7 @@ int main (int argc, char *argv[])
    std::cout << header << std::endl;
 
    // Read the block of human lines
-   igzstream human_file;
-   human_file.open(parameters.human_file);
+   human_file.open(parameters.human_file.c_str());
 
    line_nr = 1;
    long int read_pairs = 0;
@@ -155,14 +166,19 @@ int main (int argc, char *argv[])
 
          // maf filter
          std::tuple<double,double> mafs = it->maf();
-         if (!(std::get<0>(maf) < parameters.min_af || std::get<0>(maf) > parameters.max_af || std::get<1>(maf) < parameters.min_af || std::get<1>(maf) > parameters.max_af))
+         if (!(std::get<0>(mafs) < parameters.min_af || std::get<0>(mafs) > parameters.max_af || std::get<1>(mafs) < parameters.min_af || std::get<1>(mafs) > parameters.max_af))
          {
             it->chisq_p(chiTest(*it));
             read_pairs++;
 
-            if (chisq_p < parameters.chi_cutoff)
+            if (it->chisq_p() < parameters.chi_cutoff)
             {
-               doLogit(*it, null_ll);
+               doLogit(*it);
+
+               // Likelihood ratio test
+               double null_ll = nullLogLikelihood(it->get_x(), it->get_y());
+               it->p_val(likelihoodRatioTest(*it, null_ll));
+
                tested_pairs++;
                if (it->p_val() < parameters.log_cutoff)
                {
@@ -174,7 +190,7 @@ int main (int argc, char *argv[])
          }
       }
 
-      if (line_nr > (chunk_end - chunk_start))
+      if (line_nr > (parameters.chunk_end - parameters.chunk_start))
       {
          break;
       }
@@ -202,7 +218,7 @@ std::vector<std::string> readCsvLine(std::istream& is)
 
    while(std::getline(line_stream, value, ','))
    {
-      variant.push_back(value)
+      variant.push_back(value);
    }
    return variant;
 }

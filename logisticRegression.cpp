@@ -5,10 +5,10 @@
  *
  */
 
-#include "epistasis.hpp"
+#include "linkFunction.hpp" // includes epistasis.hpp
 
 // This uses BFGS optimisation by default. Invokes NR or Firth on error
-void doLogit(Pair& p, const double null_ll)
+void doLogit(Pair& p)
 {
    arma::mat x_design = p.get_x_design();
    arma::vec y_train = p.get_y();
@@ -90,12 +90,10 @@ void doLogit(Pair& p, const double null_ll)
          else
          {
             p.add_comment("bfgs-fail");
-            newtonRaphson(p, y_train, x_design);
+            newtonRaphson(p, y_train, x_design, 0);
          }
       }
    }
-   // Likelihood ratio test
-   p.lrt_p_val(likelihoodRatioTest(p, null_ll));
 }
 
 void newtonRaphson(Pair& p, const arma::vec& y_train, const arma::mat& x_design, const bool firth)
@@ -187,7 +185,7 @@ void newtonRaphson(Pair& p, const arma::vec& y_train, const arma::mat& x_design,
       LogitLikelihood likelihood_fit(x_design, y_train);
       if (p.firth())
       {
-         k.log_likelihood(likelihood_fit(converged_beta) + 0.5*log(det(inv_covar(var_covar_mat))));
+         p.log_likelihood(likelihood_fit(converged_beta) + 0.5*log(det(inv_covar(var_covar_mat))));
       }
       else
       {
@@ -219,14 +217,6 @@ void newtonRaphson(Pair& p, const arma::vec& y_train, const arma::mat& x_design,
       std::cerr << "Wald statistic: " << W << "\n";
       std::cerr << "p-value: " << p.p_val() << "\n";
 #endif
-      // Add in covariate p-values
-      for (unsigned int i = 2; i< var_covar_mat.n_rows; ++i)
-      {
-         se = pow(var_covar_mat(i,i), 0.5);
-         W = std::abs(parameter_iterations.back()(i)) / se;
-
-         p.add_covar_p(normalPval(W));
-      }
    }
 }
 

@@ -35,17 +35,22 @@
 #include <armadillo>
 #include <dlib/matrix.h>
 
+// dlib headers
+#include <dlib/optimization.h>
+
 // Classes
 #include "pair.hpp"
-#include "link_function.hpp"
 
 // Constants
-const std::string VERSION = "0.1";
-//    Default options
-const double maf_default = 0.01;
-const long int max_length_default = 100;
-const std::string chisq_default = "1";
-const std::string pval_default = "1";
+extern const std::string VERSION;
+extern const double maf_default;
+extern const long int max_length_default;
+extern const std::string chisq_default;
+extern const std::string pval_default;
+extern const double convergence_limit;
+extern const unsigned int max_nr_iterations;
+extern const double se_limit;
+extern const double bfgs_start_beta;
 
 typedef dlib::matrix<double,0,1> column_vector;
 
@@ -79,11 +84,11 @@ arma::mat inv_covar(arma::mat A);
 int fileStat(const std::string& filename);
 
 // cmdLine.cpp
-int parseCommandLine (int argc, char *argv[], po::variables_map& vm);
-void printHelp(po::options_description& help);
+int parseCommandLine (int argc, char *argv[], boost::program_options::variables_map& vm);
+void printHelp(boost::program_options::options_description& help);
 
 // logisticRegression.cpp
-void doLogit(Pair& p, const double null_ll);
+void doLogit(Pair& p);
 void newtonRaphson(Pair& p, const arma::vec& y_train, const arma::mat& x_design, const bool firth);
 arma::mat varCovarMat(const arma::mat& x, const arma::mat& b);
 arma::vec predictLogitProbs(const arma::mat& x, const arma::vec& b);

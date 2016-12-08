@@ -50,7 +50,7 @@ int parseCommandLine (int argc, char *argv[], po::variables_map& vm)
     ("help,h", "full help message");
 
    po::options_description all;
-   all.add(required).add(covariates).add(performance).add(filtering).add(other);
+   all.add(required).add(covar).add(performance).add(filtering).add(other);
 
    try
    {

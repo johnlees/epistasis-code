@@ -5,7 +5,7 @@
  *
  */
 
-#include "epistasis.hpp"
+#include "linkFunction.hpp" // includes epistasis.hpp
 
 const double normalArea = pow(2*M_PI, -0.5);
 
@@ -14,8 +14,6 @@ double chiTest(Pair& p)
 {
    arma::mat x = p.get_x();
    arma::vec y = p.get_y();
-
-   double chisq = 0;
 
    // Contigency table
    //          human 0   human 1   human 2
@@ -44,6 +42,7 @@ double chiTest(Pair& p)
          } else {
             f++;
          }
+      }
       j++;
    }
 
@@ -84,15 +83,15 @@ double chiTest(Pair& p)
    {
       for (int j = 0; j < 3; j++)
       {
-         double expected = row_sum[i] * col_sum[j] / total;
-         chisq += pow((std::abs(table[i,j] - expected) - 0.5), 2) / expected;
+         double expected = row_sum(i) * col_sum(j) / total;
+         chisq += pow((std::abs(table(i,j) - expected) - 0.5), 2) / expected;
       }
    }
 
-   boost::math::chi_squared_distribution chi_dist(2);
+   boost::math::chi_squared chi_dist(2);
    double p_value = 1 - boost::math::cdf(chi_dist, chisq);
 
-   if (p_value = 0)
+   if (p_value == 0)
    {
       p_value = normalPval(pow(chisq, 0.5));
       p.add_comment("chi-large");
@@ -113,8 +112,8 @@ double nullLogLikelihood(const arma::mat& x, const arma::vec& y)
    {
       Pair null_pair(x.n_rows);
 
-      null_pair.add_x(x, 0);
-      null_pair.add_y(y, 0);
+      null_pair.add_x(x);
+      null_pair.add_y(y);
 
       doLogit(null_pair);
       null_ll = null_pair.log_likelihood();
@@ -137,11 +136,11 @@ double likelihoodRatioTest(Pair& p, const double null_ll)
    double lrt_p = 1;
    if (log_likelihood == 0 || null_ll == 0)
    {
-      k.add_comment("zero-ll");
+      p.add_comment("zero-ll");
    }
    else
    {
-      lrt = pow(2*(log_likelihood - null_ll), 0.5);
+      double lrt = pow(2*(log_likelihood - null_ll), 0.5);
 
       if (lrt > 0)
       {
