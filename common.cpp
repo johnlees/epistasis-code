@@ -8,20 +8,23 @@
 #include "epistasis.hpp"
 
 // Parse command line parameters into usable program parameters
-cmdOptions verifyCommandLine(boost::program_options::variables_map& vm, const std::vector<Sample>& samples)
+cmdOptions verifyCommandLine(boost::program_options::variables_map& vm, double num_samples)
 {
    cmdOptions verified;
 
-   verified.max_length = vm["max_length"].as<long int>();
-
-   if(vm.count("kmers"))
+   if(vm.count("bacteria"))
    {
-      verified.kmers = vm["kmers"].as<std::string>();
+      verified.bact_file = vm["bacteria"].as<std::string>();
    }
 
-   if(vm.count("output"))
+   if(vm.count("human"))
    {
-      verified.output = vm["output"].as<std::string>();
+      verified.human_file = vm["human"].as<std::string>();
+   }
+
+   if(vm.count("struct"))
+   {
+      verified.struct_file = vm["struct"].as<std::string>();
    }
 
    if(vm.count("chisq"))
@@ -34,56 +37,48 @@ cmdOptions verifyCommandLine(boost::program_options::variables_map& vm, const st
       verified.log_cutoff = stod(vm["pval"].as<std::string>());
    }
 
-   // Verify MDS options in a separate function
-   // This is pc, size and number of threads
-   verifyMDSOptions(verified, vm);
-
-   verified.filter = 1;
-   if (vm.count("no_filtering"))
+   if (vm.count("chunk_start"))
    {
-      verified.filter = 0;
+      verified.chunk_start = vm["chunk_start"].as<long int>();
    }
-   else
+
+   if (vm.count("chunk_end"))
    {
-      // Error check filtering options
-      verified.min_words = 0;
-      if (vm.count("min_words"))
+      verified.chunk_end = vm["chunk_end"].as<long int>();
+   }
+
+   // Error check filtering options
+   verified.min_words = 0;
+   if (vm.count("mac"))
+   {
+      int min_ac_in = vm["mac"].as<int>();
+      if (min_ac_in >= 0)
       {
-         int min_words_in = vm["min_words"].as<int>();
-         if (min_words_in >= 0)
-         {
-            verified.min_words = min_words_in;
-         }
-         else
-         {
-            badCommand("min_words", std::to_string(min_words_in));
-         }
+         verified.min_ac = min_ac_in;
       }
       else
       {
-         double maf_in = vm["maf"].as<double>();
-         if (maf_in >= 0)
-         {
-            verified.min_words = static_cast<unsigned int>(samples.size() * maf_in);
-         }
-         else
-         {
-            badCommand("maf", std::to_string(maf_in));
-         }
+         throw std::runtime_error("couldn't process min_words argument");
       }
-
-      if (verified.min_words > samples.size())
-      {
-         badCommand("min_words/maf", std::to_string(verified.min_words));
-      }
-      verified.max_words = samples.size() - verified.min_words;
    }
-
-   verified.print_samples = 0;
-   if (vm.count("print_samples"))
+   else
    {
-      verified.print_samples = 1;
+      double maf_in = vm["maf"].as<double>();
+      if (maf_in >= 0)
+      {
+         verified.min_ac = static_cast<unsigned int>(num_samples * maf_in);
+      }
+      else
+      {
+         throw std::runtime_error("could process maf argument");
+      }
    }
+
+   if (verified.min_ac > num_samples)
+   {
+      throw std::runtime_error("couldn't process maf/mac argument");
+   }
+   verified.max_ac = num_samples - verified.min_ac;
 
    return verified;
 }
