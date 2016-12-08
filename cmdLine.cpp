@@ -19,8 +19,8 @@ int parseCommandLine (int argc, char *argv[], po::variables_map& vm)
    //Required options
    po::options_description required("Required options");
    required.add_options()
-    ("bacteria,b", po::value<std::string>()->required(), "human snps")
-    ("human,h", po::value<std::string>()->required(), "bacterial snps");
+    ("bacteria", po::value<std::string>()->required(), "human snps")
+    ("human", po::value<std::string>()->required(), "bacterial snps");
 
    //may want to add covariates in later (e.g. for pop struct)
    po::options_description covar("Covariate options");
