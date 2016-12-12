@@ -161,7 +161,7 @@ arma::mat Pair::get_covars()
 // Get the design matrix
 arma::mat Pair::get_x_design()
 {
-   arma::mat x_design = _x;
+   arma::mat x_design = arma::join_rows(arma::ones<arma::vec>(_number_samples), _x);
    if (_covars_set)
    {
       x_design = arma::join_rows(x_design, _covars);
