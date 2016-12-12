@@ -59,7 +59,7 @@ class Pair
 
       void add_comment(const std::string& new_comment); // this is defined in pair.cpp
       void add_x(const std::vector<std::string>& variant, const long int human_line); // this is defined in pair.cpp
-      void add_x(const arma::vec x);
+      void add_x(const arma::mat x);
       void add_y(const std::vector<std::string>& variant, const long int bacterial_line); // this is defined in pair.cpp
       void add_y(const arma::vec y);
       void add_covar(const arma::mat& covars); // this is defined in pair.cpp

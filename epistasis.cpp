@@ -121,21 +121,40 @@ int main (int argc, char *argv[])
    bacterial_file.open(parameters.bact_file.c_str());
 
    std::vector<Pair> all_pairs;
-   long int line_nr = 1;
+   long int bact_line_nr = 1;
    while (bacterial_file)
    {
       std::vector<std::string> bacterial_variant = readCsvLine(bacterial_file);
-      Pair bact_in(num_samples);
-      bact_in.add_y(bacterial_variant, line_nr);
-      if (use_mds)
+      if (bacterial_file)
       {
-         bact_in.add_covar(mds);
+         Pair bact_in(num_samples);
+         bact_in.add_y(bacterial_variant, bact_line_nr);
+
+         // Check MAF of this variant
+         std::tuple<double,double> mafs = bact_in.maf();
+         if (std::get<1>(mafs) > parameters.min_af && std::get<1>(mafs) < parameters.max_af)
+         {
+            if (use_mds)
+            {
+               bact_in.add_covar(mds);
+            }
+
+            // If set here will calculate logistic regression for all bacterial
+            // variants if covar provided.
+            // Alternative would be to do for only pairs passing chi-sq. Less
+            // efficient if many pairs passing.
+            set_null_ll(bact_in);
+
+            all_pairs.push_back(bact_in);
+         }
+
+         bact_line_nr++;
       }
-
-      set_null_ll(bact_in);
-
-      all_pairs.push_back(bact_in);
-      line_nr++;
+      else
+      {
+         bact_line_nr--;
+         break;
+      }
    }
 
    // Write a header
@@ -156,7 +175,7 @@ int main (int argc, char *argv[])
    // Read the block of human lines
    human_file.open(parameters.human_file.c_str());
 
-   line_nr = 1;
+   long int human_line_nr = 1;
    long int read_pairs = 0;
    long int tested_pairs = 0;
    long int significant_pairs = 0;
@@ -165,47 +184,56 @@ int main (int argc, char *argv[])
       std::vector<std::string> human_variant;
       human_variant.reserve(num_samples);
       human_variant = readCsvLine(human_file);
-      // Test each human variant against every bacterial variant
-      for (auto it = all_pairs.begin(); it < all_pairs.end(); it++)
-      {
-         it->add_x(human_variant, line_nr);
 
-         // maf filter
-         std::tuple<double,double> mafs = it->maf();
-         if (!(std::get<0>(mafs) < parameters.min_af || std::get<0>(mafs) > parameters.max_af || std::get<1>(mafs) < parameters.min_af || std::get<1>(mafs) > parameters.max_af))
+      if (human_file)
+      {
+         // Test each human variant against every bacterial variant
+         for (auto it = all_pairs.begin(); it < all_pairs.end(); it++)
          {
-            it->chisq_p(chiTest(*it));
-            read_pairs++;
+            it->add_x(human_variant, human_line_nr);
 
-            if (it->chisq_p() < parameters.chi_cutoff)
+            // maf filter
+            std::tuple<double,double> mafs = it->maf();
+            if (std::get<0>(mafs) > parameters.min_af && std::get<0>(mafs) < parameters.max_af)
             {
-               doLogit(*it);
+               it->chisq_p(chiTest(*it));
+               read_pairs++;
 
-               // Likelihood ratio test
-               it->p_val(likelihoodRatioTest(*it));
-
-               tested_pairs++;
-               if (it->p_val() < parameters.log_cutoff)
+               if (it->chisq_p() < parameters.chi_cutoff)
                {
-                  significant_pairs++;
+                  doLogit(*it);
+
+                  // Likelihood ratio test
+                  it->p_val(likelihoodRatioTest(*it));
+
+                  tested_pairs++;
+                  if (it->p_val() < parameters.log_cutoff)
+                  {
+                     significant_pairs++;
+                  }
                }
+
+               std::cout << *it << std::endl;
             }
-
-            std::cout << *it << std::endl;
          }
-      }
 
-      if (parameters.chunk_start != 0 && parameters.chunk_end != 0 && (line_nr > (parameters.chunk_end - parameters.chunk_start)))
-      {
-         break;
+         if (parameters.chunk_start != 0 && parameters.chunk_end != 0 && (human_line_nr > (parameters.chunk_end - parameters.chunk_start)))
+         {
+            human_line_nr--;
+            break;
+         }
+         else
+         {
+            human_line_nr++;
+         }
       }
       else
       {
-         line_nr++;
+         break;
       }
    }
 
-   std::cerr << "Processed " << line_nr * all_pairs.size() << " total pairs. Of these:\n";
+   std::cerr << "Processed " << human_line_nr * bact_line_nr << " total pairs. Of these:\n";
    std::cerr << "\tPassed maf filter:\t" << read_pairs << std::endl;
    std::cerr << "\tPassed chi^2 filter:\t" << tested_pairs << std::endl;
    std::cerr << "\tPassed p-val (logistic) filter:\t" << significant_pairs << std::endl;

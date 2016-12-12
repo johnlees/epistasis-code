@@ -64,12 +64,12 @@ cmdOptions verifyCommandLine(boost::program_options::variables_map& vm, double n
    double maf_in = vm["maf"].as<double>();
    if (maf_in >= 0 && maf_in <= 0.5)
    {
-      verified.min_af = num_samples * maf_in;
+      verified.min_af = maf_in;
       verified.max_af = 1 - verified.min_af;
    }
    else
    {
-      throw std::runtime_error("could process maf argument");
+      throw std::runtime_error("could not process maf argument");
    }
 
    return verified;

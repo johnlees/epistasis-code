@@ -63,7 +63,7 @@ void Pair::add_x(const std::vector<std::string>& variant, const long int human_l
 }
 
 // For null ll
-void Pair::add_x(const arma::vec x)
+void Pair::add_x(const arma::mat x)
 {
    _x = x;
    _human_line = 0;
