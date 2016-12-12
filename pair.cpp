@@ -12,6 +12,8 @@ const std::string pair_comment_default = "NA";
 Pair::Pair(int number_samples)
    :_number_samples(number_samples), _bact_line(0), _human_line(0), _covars_set(0), _maf_x(0), _maf_y(0), _chisq_p(1), _lrt_p(1), _log_likelihood(0), _beta(0), _se(0), _comment(pair_comment_default), _firth(0)
 {
+   _x.zeros(number_samples);
+   _y.zeros(number_samples);
 }
 
 // Print fields tab sep, identical to input. Doesn't print newline
@@ -82,7 +84,7 @@ void Pair::add_y(const std::vector<std::string>& variant, const long int bact_li
    {
       if (*it == "1")
       {
-         _x[i] = 1;
+         _y[i] = 1;
       }
       else if (*it != "0")
       {

@@ -20,7 +20,8 @@ int parseCommandLine (int argc, char *argv[], po::variables_map& vm)
    po::options_description required("Required options");
    required.add_options()
     ("bacteria", po::value<std::string>()->required(), "human snps")
-    ("human", po::value<std::string>()->required(), "bacterial snps");
+    ("human", po::value<std::string>()->required(), "bacterial snps")
+    ("output", po::value<std::string>()->required(), "output name");
 
    //may want to add covariates in later (e.g. for pop struct)
    po::options_description covar("Covariate options");
@@ -40,7 +41,6 @@ int parseCommandLine (int argc, char *argv[], po::variables_map& vm)
    po::options_description filtering("Filtering options");
    filtering.add_options()
     ("maf", po::value<double>()->default_value(maf_default), "minimum variant frequency")
-    ("mac", po::value<int>(), "minimum variant occurences. Overrides --maf")
     ("chisq", po::value<std::string>()->default_value(chisq_default), "p-value threshold for initial chi squared test. Set to 1 to show all")
     ("pval", po::value<std::string>()->default_value(pval_default), "p-value threshold for final logistic test. Set to 1 to show all");
 

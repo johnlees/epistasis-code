@@ -68,6 +68,7 @@ struct cmdOptions
 
    std::string bact_file;
    std::string human_file;
+   std::string output_file;
    std::string struct_file;
 };
 

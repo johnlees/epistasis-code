@@ -22,6 +22,11 @@ cmdOptions verifyCommandLine(boost::program_options::variables_map& vm, double n
       verified.human_file = vm["human"].as<std::string>();
    }
 
+   if(vm.count("output"))
+   {
+      verified.output_file = vm["output"].as<std::string>();
+   }
+
    if(vm.count("struct"))
    {
       verified.struct_file = vm["struct"].as<std::string>();

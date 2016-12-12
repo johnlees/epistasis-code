@@ -61,7 +61,7 @@ int main (int argc, char *argv[])
    if (vm.count("human"))
    {
       igzstream human_in;
-      human_in.open(vm["pheno"].as<std::string>().c_str());
+      human_in.open(vm["human"].as<std::string>().c_str());
       human_variant = readCsvLine(human_in);
    }
    else
@@ -79,7 +79,6 @@ int main (int argc, char *argv[])
    int use_mds = 0;
    if (fileStat(parameters.struct_file))
    {
-      arma::mat mds;
       mds.load(parameters.struct_file);
 
       if (mds.n_rows != num_samples)
@@ -91,13 +90,6 @@ int main (int argc, char *argv[])
          use_mds = 1;
          std::cerr << "WARNING: Struct file loaded. IT IS UP TO YOU to make sure the order of samples is the same as in each matrix\n";
       }
-   }
-
-   // calculate the null log-likelihood
-   arma::mat x(num_samples, 1, arma::fill::ones);
-   if (use_mds)
-   {
-      x = join_rows(x, mds);
    }
 
    // Open the human variant ifstream, and read through until the required
@@ -146,8 +138,18 @@ int main (int argc, char *argv[])
 
    // Write a header
    std::cerr << "Starting association tests" << std::endl;
-   std::string header = "human_line\tbact_line\thuman_af\tbacterial_af\tchisq_p_val\tlogistic_p_val\tlrt_p_val\tbeta\tcomments";
-   std::cout << header << std::endl;
+
+   ogzstream out_stream;
+   out_stream.open((parameters.output_file + ".gz").c_str());
+   if (out_stream.good())
+   {
+      std::string header = "human_line\tbact_line\thuman_af\tbacterial_af\tchisq_p_val\tlogistic_p_val\tlrt_p_val\tbeta\tcomments";
+      std::cout << header << std::endl;
+   }
+   else
+   {
+      throw std::runtime_error("Could not write to output file " + parameters.output_file + ".gz");
+   }
 
    // Read the block of human lines
    human_file.open(parameters.human_file.c_str());
@@ -158,7 +160,9 @@ int main (int argc, char *argv[])
    long int significant_pairs = 0;
    while (human_file)
    {
-      std::vector<std::string> human_variant = readCsvLine(human_file);
+      std::vector<std::string> human_variant;
+      human_variant.reserve(num_samples);
+      human_variant = readCsvLine(human_file);
       // Test each human variant against every bacterial variant
       for (auto it = all_pairs.begin(); it < all_pairs.end(); it++)
       {
@@ -176,6 +180,8 @@ int main (int argc, char *argv[])
                doLogit(*it);
 
                // Likelihood ratio test
+               // TODO need to do this every loop, or just for every y?
+               // think need to set the x to the non-kmer x
                double null_ll = nullLogLikelihood(it->get_x(), it->get_y());
                it->p_val(likelihoodRatioTest(*it, null_ll));
 
@@ -190,7 +196,7 @@ int main (int argc, char *argv[])
          }
       }
 
-      if (line_nr > (parameters.chunk_end - parameters.chunk_start))
+      if (parameters.chunk_start != 0 && parameters.chunk_end != 0 && (line_nr > (parameters.chunk_end - parameters.chunk_start)))
       {
          break;
       }
