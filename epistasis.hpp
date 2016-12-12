@@ -43,9 +43,8 @@
 
 // Constants
 extern const std::string VERSION;
-extern const double maf_default;
-extern const double missing_default;
-extern const long int max_length_default;
+extern const std::string maf_default;
+extern const std::string missing_default;
 extern const std::string chisq_default;
 extern const std::string pval_default;
 extern const double convergence_limit;
