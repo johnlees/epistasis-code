@@ -61,7 +61,7 @@ cmdOptions verifyCommandLine(boost::program_options::variables_map& vm, double n
    }
 
    // Error check filtering options
-   double maf_in = vm["maf"].as<double>();
+   double maf_in = stod(vm["maf"].as<std:;string>());
    if (maf_in >= 0 && maf_in <= 0.5)
    {
       verified.min_af = maf_in;
@@ -74,7 +74,7 @@ cmdOptions verifyCommandLine(boost::program_options::variables_map& vm, double n
 
    if (vm.count("missing"))
    {
-      verified.missing = vm["missing"].as<double>();
+      verified.missing = stod(vm["missing"].as<std::string>());
    }
 
    return verified;

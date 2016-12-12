@@ -40,8 +40,8 @@ int parseCommandLine (int argc, char *argv[], po::variables_map& vm)
    //NB pval cutoffs are strings for display, and are converted to floats later
    po::options_description filtering("Filtering options");
    filtering.add_options()
-    ("maf", po::value<double>()->default_value(maf_default), "minimum variant frequency")
-    ("missing", po::value<double>()->default_value(missing_default), "maximum missing rate")
+    ("maf", po::value<std::string>()->default_value(maf_default), "minimum variant frequency")
+    ("missing", po::value<std::string>()->default_value(missing_default), "maximum missing rate")
     ("chisq", po::value<std::string>()->default_value(chisq_default), "p-value threshold for initial chi squared test. Set to 1 to show all")
     ("pval", po::value<std::string>()->default_value(pval_default), "p-value threshold for final logistic test. Set to 1 to show all");
 

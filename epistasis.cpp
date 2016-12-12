@@ -10,9 +10,8 @@
 // Constants
 const std::string VERSION = "0.1";
 //    Default options
-const double maf_default = 0.05;
-const double missing_default = 0.05;
-const long int max_length_default = 100;
+const std::string maf_default = "0.05";
+const std::string missing_default = "0.05";
 const std::string chisq_default = "1";
 const std::string pval_default = "1";
 const double convergence_limit = 10e-8;
