@@ -10,7 +10,7 @@
 const std::string pair_comment_default = "NA";
 
 Pair::Pair(int number_samples)
-   :_number_samples(number_samples), _bact_line(0), _human_line(0), _covars_set(0), _maf_x(0), _maf_y(0), _chisq_p(1), _lrt_p(1), _log_likelihood(0), _beta(0), _se(0), _comment(pair_comment_default), _firth(0)
+   :_number_samples(number_samples), _bact_line(0), _human_line(0), _covars_set(0), _maf_x(0), _maf_y(0), _chisq_p(1), _lrt_p(1), _log_likelihood(0), _null_ll(0), _beta(0), _se(0), _comment(pair_comment_default), _firth(0)
 {
    _x.zeros(number_samples);
    _y.zeros(number_samples);
@@ -133,6 +133,17 @@ void Pair::add_comment(const std::string& new_comment)
    }
 }
 
+// Get covars
+arma::mat Pair::get_covars()
+{
+   if (!(_covars_set))
+   {
+      throw std::logic_error("Tried to access pair covars when they have not been set");
+   }
+
+   return _covars;
+}
+
 // Get the design matrix
 arma::mat Pair::get_x_design()
 {
@@ -147,6 +158,7 @@ arma::mat Pair::get_x_design()
 
 void Pair::reset_stats()
 {
+   // null_ll is retained
    _chisq_p = 1;
    _lrt_p = 1;
    _log_likelihood = 0;

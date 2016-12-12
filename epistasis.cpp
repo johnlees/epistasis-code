@@ -132,6 +132,8 @@ int main (int argc, char *argv[])
          bact_in.add_covar(mds);
       }
 
+      set_null_ll(bact_in);
+
       all_pairs.push_back(bact_in);
       line_nr++;
    }
@@ -180,10 +182,7 @@ int main (int argc, char *argv[])
                doLogit(*it);
 
                // Likelihood ratio test
-               // TODO need to do this every loop, or just for every y?
-               // think need to set the x to the non-kmer x
-               double null_ll = nullLogLikelihood(it->get_x(), it->get_y());
-               it->p_val(likelihoodRatioTest(*it, null_ll));
+               it->p_val(likelihoodRatioTest(*it));
 
                tested_pairs++;
                if (it->p_val() < parameters.log_cutoff)

@@ -34,6 +34,7 @@ class Pair
       double chisq_p() const { return _chisq_p; }
       double p_val() const { return _lrt_p; }
       double log_likelihood() const { return _log_likelihood; }
+      double null_ll() const { return _null_ll; }
       double beta() const { return _beta; }
       double se() const { return _se; }
       std::string comments() const { return _comment; }
@@ -41,12 +42,17 @@ class Pair
 
       arma::vec get_x() const { return _x; }
       arma::vec get_y() const { return _y; }
+      arma::mat get_covars(); // this is defined in pair.cpp
       arma::mat get_x_design(); // this is defined in pair.cpp
+
+      size_t size() const { return _number_samples; }
+      int covars_set() const { return _covars_set; }
 
       // Modifying operations
       void p_val(const double pvalue) { _lrt_p = pvalue; }
       void chisq_p(const double pvalue) { _chisq_p = pvalue; }
       void log_likelihood(const double ll) { _log_likelihood = ll; }
+      void null_ll(const double null_ll) { _null_ll = null_ll; }
       void beta(const double b) { _beta = b; }
       void standard_error(const double se) { _se = se; }
       void firth(const int set_firth) { _firth = set_firth; }
@@ -75,6 +81,7 @@ class Pair
       double _chisq_p;
       double _lrt_p;
       double _log_likelihood;
+      double _null_ll;
       double _beta;
       double _se;
       std::string _comment;
