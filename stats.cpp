@@ -46,9 +46,10 @@ double chiTest(Pair& p)
       j++;
    }
 
-   arma::mat::fixed<2, 3> table = {a, b, c, d, e, f};
-#ifdef SEER_DEBUG
-   arma::Mat<int>::fixed<2, 3> tab_out = {int (a), int (b), int (c), int(d), int(e), int(f)};
+   // This is done row-wise
+   arma::mat::fixed<2, 3> table = {a, d, b, e, c, f};
+#ifdef EPISTASIS_DEBUG
+   arma::Mat<int>::fixed<2, 3> tab_out = {int (a), int (d), int (b), int(e), int(c), int(f)};
    std::cerr << tab_out << "\n";
 #endif
 
@@ -84,7 +85,7 @@ double chiTest(Pair& p)
       for (int j = 0; j < 3; j++)
       {
          double expected = row_sum(i) * col_sum(j) / total;
-         chisq += pow((std::abs(table(i,j) - expected) - 0.5), 2) / expected;
+         chisq += pow(table(i,j) - expected, 2) / expected;
       }
    }
 
@@ -96,7 +97,7 @@ double chiTest(Pair& p)
       p_value = normalPval(pow(chisq, 0.5));
       p.add_comment("chi-large");
    }
-#ifdef SEER_DEBUG
+#ifdef EPISTASIS_DEBUG
    std::cerr << "chisq:" << chisq << "\n";
    std::cerr << "chisq p: " << p_value << "\n";
 #endif
@@ -175,7 +176,7 @@ double normalPval(double testStatistic)
       // S(z) <= phi(z)/z
       // cdf = 1-(0.5 * S(z))
       // At z = 5 correct to +/- 2.5%
-#ifdef SEER_DEBUG
+#ifdef EPISTASIS_DEBUG
       std::cerr << "using erfc bound rather than 'exact' function\n";
 #endif
       p_val = 2 * exp(-0.5*pow(testStatistic,2))*normalArea/testStatistic;
