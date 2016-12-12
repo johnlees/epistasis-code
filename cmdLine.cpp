@@ -34,7 +34,7 @@ int parseCommandLine (int argc, char *argv[], po::variables_map& vm)
    po::options_description performance("Performance options");
    performance.add_options()
     ("chunk_start", po::value<long int>()->default_value(0), ("start coordinate in human snps (1-start; inclusive)"))
-    ("chunk_end", po::value<long int>()->default_value(0), ("end coordinate in human snps (1-start; inclusive"));
+    ("chunk_end", po::value<long int>()->default_value(0), ("end coordinate in human snps (1-start; inclusive)"));
 
    //Optional filtering parameters
    //NB pval cutoffs are strings for display, and are converted to floats later

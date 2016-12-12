@@ -98,7 +98,7 @@ int main (int argc, char *argv[])
    human_file.open(parameters.human_file.c_str());
 
    long int human_line_nr = 1;
-   if (parameters.chunk_start != 0 && parameters.chunk_end != 0)
+   if (parameters.chunk_start > 1 && parameters.chunk_end > 1)
    {
       if (parameters.chunk_start >= parameters.chunk_end)
       {
@@ -217,7 +217,7 @@ int main (int argc, char *argv[])
             }
          }
 
-         if (parameters.chunk_start != 0 && parameters.chunk_end != 0 && (human_line_nr >= parameters.chunk_end))
+         if (parameters.chunk_start > 1 && parameters.chunk_end > 1 && (human_line_nr >= parameters.chunk_end))
          {
             human_line_nr--;
             break;
