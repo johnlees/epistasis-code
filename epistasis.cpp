@@ -98,6 +98,7 @@ int main (int argc, char *argv[])
    igzstream human_file;
    human_file.open(parameters.human_file.c_str());
 
+   long int human_line_nr = 1;
    if (parameters.chunk_start != 0 && parameters.chunk_end != 0)
    {
       if (parameters.chunk_start >= parameters.chunk_end)
@@ -111,6 +112,7 @@ int main (int argc, char *argv[])
          for (int i = 0; i < parameters.chunk_start - 1; i++)
          {
             std::getline(human_file, line);
+            human_line_nr++;
          }
       }
    }
@@ -174,7 +176,6 @@ int main (int argc, char *argv[])
       throw std::runtime_error("Could not write to output file " + parameters.output_file + ".gz");
    }
 
-   long int human_line_nr = 1;
    long int read_pairs = 0;
    long int tested_pairs = 0;
    long int significant_pairs = 0;
@@ -217,7 +218,7 @@ int main (int argc, char *argv[])
             }
          }
 
-         if (parameters.chunk_start != 0 && parameters.chunk_end != 0 && (human_line_nr > (parameters.chunk_end - parameters.chunk_start)))
+         if (parameters.chunk_start != 0 && parameters.chunk_end != 0 && (human_line_nr >= parameters.chunk_end))
          {
             human_line_nr--;
             break;
