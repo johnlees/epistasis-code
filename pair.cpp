@@ -38,6 +38,7 @@ void Pair::add_x(const std::vector<std::string>& variant, const long int human_l
    _x.zeros(variant.size());
 
    int i = 0;
+   int missing = 0;
    for (auto it = variant.begin(); it != variant.end(); ++it)
    {
       if (*it == "0/1")
@@ -48,6 +49,11 @@ void Pair::add_x(const std::vector<std::string>& variant, const long int human_l
       {
          _x[i] = 2;
       }
+      // missing as ref
+      else if (*it == "./.")
+      {
+         missing++;
+      }
       else if (*it != "0/0")
       {
          std::cerr << "none standard human snp\n";
@@ -56,6 +62,7 @@ void Pair::add_x(const std::vector<std::string>& variant, const long int human_l
    }
 
    _maf_x = (double)accu(_x)/_x.n_elem;
+   _missing_x = (double)missing/_x.n_elem;
 
    // stats also get reset
    _human_line = human_line;
@@ -80,11 +87,17 @@ void Pair::add_y(const std::vector<std::string>& variant, const long int bact_li
    _y.zeros(variant.size());
 
    int i = 0;
+   int missing = 0;
    for (auto it = variant.begin(); it != variant.end(); ++it)
    {
       if (*it == "1")
       {
          _y[i] = 1;
+      }
+      // missing as ref
+      else if (*it == ".")
+      {
+         missing++;
       }
       else if (*it != "0")
       {
@@ -94,6 +107,7 @@ void Pair::add_y(const std::vector<std::string>& variant, const long int bact_li
    }
 
    _maf_y = (double)accu(_y)/_y.n_elem;
+   _missing_y = (double)missing/_y.n_elem;
 
    // stats also get reset
    _bact_line = bact_line;

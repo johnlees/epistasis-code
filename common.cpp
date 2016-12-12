@@ -72,6 +72,11 @@ cmdOptions verifyCommandLine(boost::program_options::variables_map& vm, double n
       throw std::runtime_error("could not process maf argument");
    }
 
+   if (vm.count("missing"))
+   {
+      verified.missing = vm["missing"].as<double>();
+   }
+
    return verified;
 }
 

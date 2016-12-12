@@ -44,6 +44,7 @@
 // Constants
 extern const std::string VERSION;
 extern const double maf_default;
+extern const double missing_default;
 extern const long int max_length_default;
 extern const std::string chisq_default;
 extern const std::string pval_default;
@@ -60,8 +61,9 @@ struct cmdOptions
    double log_cutoff;
    double chi_cutoff;
 
-   size_t min_af;
-   size_t max_af;
+   double min_af;
+   double max_af;
+   double missing;
 
    long int chunk_start;
    long int chunk_end;

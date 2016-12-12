@@ -10,7 +10,8 @@
 // Constants
 const std::string VERSION = "0.1";
 //    Default options
-const double maf_default = 0.01;
+const double maf_default = 0.05;
+const double missing_default = 0.05;
 const long int max_length_default = 100;
 const std::string chisq_default = "1";
 const std::string pval_default = "1";
@@ -130,9 +131,10 @@ int main (int argc, char *argv[])
          Pair bact_in(num_samples);
          bact_in.add_y(bacterial_variant, bact_line_nr);
 
-         // Check MAF of this variant
+         // Check MAF and missingness of this variant
          std::tuple<double,double> mafs = bact_in.maf();
-         if (std::get<1>(mafs) > parameters.min_af && std::get<1>(mafs) < parameters.max_af)
+         std::tuple<double,double> missings = bact_in.missing();
+         if (std::get<1>(mafs) > parameters.min_af && std::get<1>(mafs) < parameters.max_af && std::get<1>(missings) < parameters.missing)
          {
             if (use_mds)
             {
@@ -165,15 +167,12 @@ int main (int argc, char *argv[])
    if (out_stream.good())
    {
       std::string header = "human_line\tbact_line\thuman_af\tbacterial_af\tchisq_p_val\tlogistic_p_val\tlrt_p_val\tbeta\tcomments";
-      std::cout << header << std::endl;
+      out_stream << header << std::endl;
    }
    else
    {
       throw std::runtime_error("Could not write to output file " + parameters.output_file + ".gz");
    }
-
-   // Read the block of human lines
-   human_file.open(parameters.human_file.c_str());
 
    long int human_line_nr = 1;
    long int read_pairs = 0;
@@ -194,7 +193,8 @@ int main (int argc, char *argv[])
 
             // maf filter
             std::tuple<double,double> mafs = it->maf();
-            if (std::get<0>(mafs) > parameters.min_af && std::get<0>(mafs) < parameters.max_af)
+            std::tuple<double,double> missings = it->missing();
+            if (std::get<0>(mafs) > parameters.min_af && std::get<0>(mafs) < parameters.max_af && std::get<0>(missings) < parameters.missing)
             {
                it->chisq_p(chiTest(*it));
                read_pairs++;
@@ -213,7 +213,7 @@ int main (int argc, char *argv[])
                   }
                }
 
-               std::cout << *it << std::endl;
+               out_stream << *it << std::endl;
             }
          }
 

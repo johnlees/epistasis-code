@@ -31,6 +31,7 @@ class Pair
       long int human_line() const { return _human_line; }
 
       std::tuple<double,double> maf() const { return std::make_tuple (_maf_x, _maf_y); }
+      std::tuple<double,double> missing() const { return std::make_tuple (_missing_x, _missing_y); }
       double chisq_p() const { return _chisq_p; }
       double p_val() const { return _lrt_p; }
       double log_likelihood() const { return _log_likelihood; }
@@ -77,7 +78,9 @@ class Pair
       int _covars_set;
 
       double _maf_x;
+      double _missing_x;
       double _maf_y;
+      double _missing_y;
       double _chisq_p;
       double _lrt_p;
       double _log_likelihood;

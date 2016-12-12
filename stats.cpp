@@ -75,9 +75,9 @@ double chiTest(Pair& p)
    // With Yates' continuity correction
    double chisq = 0;
 
-   double total = accu(table);
-   arma::vec col_sum = sum(table, 0);
-   arma::vec row_sum = sum(table, 1);
+   double total = accu(table); // should equal sample size
+   arma::rowvec col_sum = sum(table, 0);
+   arma::colvec row_sum = sum(table, 1);
 
    for (int i = 0; i < 2; ++i)
    {
