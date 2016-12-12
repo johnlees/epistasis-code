@@ -166,7 +166,7 @@ int main (int argc, char *argv[])
    out_stream.open((parameters.output_file + ".gz").c_str());
    if (out_stream.good())
    {
-      std::string header = "human_line\tbact_line\thuman_af\tbacterial_af\tchisq_p_val\tlogistic_p_val\tlrt_p_val\tbeta\tcomments";
+      std::string header = "human_line\tbact_line\thuman_af\tbacterial_af\tchisq_p_val\tlogistic_p_val\tbeta\tcomments";
       out_stream << header << std::endl;
    }
    else
