@@ -104,15 +104,16 @@ double chiTest(Pair& p)
 }
 
 // Fit null models for null log-likelihoods
-double nullLogLikelihood(const arma::mat& x, const arma::vec& y)
+void set_null_ll(Pair& p)
 {
    double null_ll = 0;
 
-   if (x.n_cols > 1)
+   arma::vec y = p.get_y();
+   if (p.covars_set())
    {
-      Pair null_pair(x.n_rows);
+      Pair null_pair(p.size());
 
-      null_pair.add_x(x);
+      null_pair.add_x(p.get_covars());
       null_pair.add_y(y);
 
       doLogit(null_pair);
@@ -120,19 +121,24 @@ double nullLogLikelihood(const arma::mat& x, const arma::vec& y)
    }
    else
    {
-      dlib::matrix<double,1,1> intercept;
+      // intercept only
+      arma::mat x_intercept(p.size(), 1, arma::fill::ones);
 
+      dlib::matrix<double,1,1> intercept;
       intercept(0) = log(mean(y)/(1-mean(y))); // null is: intercept = log-odds of success
-      LogitLikelihood likelihood_fit(x, y);
+
+      LogitLikelihood likelihood_fit(x_intercept, y);
       null_ll = likelihood_fit(intercept);
    }
-   return null_ll;
+
+   p.null_ll(null_ll);
 }
 
 // Likelihood-ratio test
-double likelihoodRatioTest(Pair& p, const double null_ll)
+double likelihoodRatioTest(Pair& p)
 {
    double log_likelihood = p.log_likelihood();
+   double null_ll = p.null_ll();
    double lrt_p = 1;
    if (log_likelihood == 0 || null_ll == 0)
    {

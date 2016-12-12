@@ -96,7 +96,7 @@ arma::vec predictLogitProbs(const arma::mat& x, const arma::vec& b);
 
 // stats.cpp
 double chiTest(Pair& p);
-double nullLogLikelihood(const arma::mat& x, const arma::vec& y);
-double likelihoodRatioTest(Pair& p, const double null_ll);
+void set_null_ll(Pair& p);
+double likelihoodRatioTest(Pair& p);
 double normalPval(double testStatistic);
 
