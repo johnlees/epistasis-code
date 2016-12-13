@@ -16,7 +16,7 @@ CPPFLAGS=-I$(PREFIX)/include -Igzstream -Idlib -I/usr/local/hdf5/include -D DLIB
 
 PROGRAMS=epistasis
 
-OBJECTS=pair.o logitFunction.o stats.o logisticRegression.o common.o cmdLine.o epistasis.o
+OBJECTS=fisher.o pair.o logitFunction.o stats.o logisticRegression.o common.o cmdLine.o epistasis.o
 
 all: $(PROGRAMS)
 
@@ -29,6 +29,9 @@ install: all
 
 epistasis: $(OBJECTS)
 	$(LINK.cpp) $^ $(SEER_LDLIBS) -o $@
+
+fisher.o:
+	$(CXX) $(CPPFLAGS) -c -o $@ stats/fisher.c
 
 .PHONY: all clean install
 

@@ -61,59 +61,58 @@ double chiTest(Pair& p)
    }
 
    // Treat as invalid if any entry is 0 or 1, or if more than one entry < 5
-   // Mark as needing to use Firth regression
+   // Mark as needing to use Firth regression and use Fisher's exact test
    int low_obs = 0;
+   double p_value = 0;
    for (auto obs = table.begin(); obs != table.end(); ++obs)
    {
       if (*obs <= 1 || (*obs <= 5 && ++low_obs > 2))
       {
-         p.add_comment("bad-chisq");
+         p_value = fisher23(int (a), int (b), int (c), int(d), int (e), int(f), 1);
+         p.add_comment("fisher");
          p.firth(1);
          break;
       }
    }
 
-   // With Yates' continuity correction
-   double chisq = 0;
-
-   double total = accu(table); // should equal sample size
-   arma::rowvec col_sum = sum(table, 0);
-   arma::colvec row_sum = sum(table, 1);
-
-   for (int i = 0; i < 2; ++i)
+   // Use chi^2 test if table was ok
+   if (!p.firth())
    {
-      for (int j = 0; j < 3; j++)
+      double chisq = 0;
+
+      double total = accu(table); // should equal sample size
+      arma::rowvec col_sum = sum(table, 0);
+      arma::colvec row_sum = sum(table, 1);
+
+      for (int i = 0; i < 2; ++i)
       {
-         double expected = row_sum(i) * col_sum(j) / total;
-         if (expected == 0)
+         for (int j = 0; j < 3; j++)
          {
-            expected = 1;
-            p.add_comment("inf-chisq");
+            double expected = row_sum(i) * col_sum(j) / total;
+            chisq += pow(table(i,j) - expected, 2) / expected;
          }
-         chisq += pow(table(i,j) - expected, 2) / expected;
       }
-   }
 
-   double p_value = 0;
-   try
-   {
-      boost::math::chi_squared chi_dist(2);
-      p_value = 1 - boost::math::cdf(chi_dist, chisq);
-
-      if (p_value == 0)
+      try
       {
-         p_value = normalPval(pow(chisq, 0.5));
-         p.add_comment("chi-large");
-      }
+         boost::math::chi_squared chi_dist(2);
+         p_value = 1 - boost::math::cdf(chi_dist, chisq);
+
+         if (p_value == 0)
+         {
+            p_value = normalPval(pow(chisq, 0.5));
+            p.add_comment("chi-large");
+         }
 #ifdef EPISTASIS_DEBUG
-      std::cerr << "chisq:" << chisq << "\n";
-      std::cerr << "chisq p: " << p_value << "\n";
+         std::cerr << "chisq:" << chisq << "\n";
+         std::cerr << "chisq p: " << p_value << "\n";
 #endif
-   }
-   catch (std::exception& e)
-   {
-      std::cerr << "Caught error: " << e.what() << std::endl;
-      std::cerr << "Could not do chisq test on lines: " << p.bact_line() << "," << p.human_line() << std::endl;
+      }
+      catch (std::exception& e)
+      {
+         std::cerr << "Caught error: " << e.what() << std::endl;
+         std::cerr << "Could not do chisq test on lines: " << p.bact_line() << "," << p.human_line() << std::endl;
+      }
    }
 
    return p_value;
@@ -134,7 +133,7 @@ void set_null_ll(Pair& p)
 
       doLogit(null_pair);
       null_ll = null_pair.log_likelihood();
-      if (p.log_likelihood() == 0)
+      if (null_ll == 0)
       {
          std::cerr << "Could not find null log-likelihood for bacterial line " << p.bact_line() << std::endl;
       }
