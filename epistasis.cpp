@@ -48,7 +48,7 @@ int main (int argc, char *argv[])
    if (argc == 1)
    {
       std::cerr << "Usage: epistasis -b bacterial_snps_indels.csv.gz -h human_snps.csv.gz --struct all_structure\n\n"
-         << "For full option details run seer -h\n";
+         << "For full option details run epistasis -h\n";
       return 0;
    }
    else if (parseCommandLine(argc, argv, vm))

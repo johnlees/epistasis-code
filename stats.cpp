@@ -85,22 +85,37 @@ double chiTest(Pair& p)
       for (int j = 0; j < 3; j++)
       {
          double expected = row_sum(i) * col_sum(j) / total;
+         if (expected == 0)
+         {
+            expected = 1;
+            p.add_comment("inf-chisq");
+         }
          chisq += pow(table(i,j) - expected, 2) / expected;
       }
    }
 
-   boost::math::chi_squared chi_dist(2);
-   double p_value = 1 - boost::math::cdf(chi_dist, chisq);
-
-   if (p_value == 0)
+   double p_value = 0;
+   try
    {
-      p_value = normalPval(pow(chisq, 0.5));
-      p.add_comment("chi-large");
-   }
+      boost::math::chi_squared chi_dist(2);
+      p_value = 1 - boost::math::cdf(chi_dist, chisq);
+
+      if (p_value == 0)
+      {
+         p_value = normalPval(pow(chisq, 0.5));
+         p.add_comment("chi-large");
+      }
 #ifdef EPISTASIS_DEBUG
-   std::cerr << "chisq:" << chisq << "\n";
-   std::cerr << "chisq p: " << p_value << "\n";
+      std::cerr << "chisq:" << chisq << "\n";
+      std::cerr << "chisq p: " << p_value << "\n";
 #endif
+   }
+   catch (std::exception& e)
+   {
+      std::cerr << "Caught error: " << e.what() << std::endl;
+      std::cerr << "Could not do chisq test on lines: " << p.bact_line() << "," << p.human_line() << std::endl;
+   }
+
    return p_value;
 }
 
@@ -119,6 +134,10 @@ void set_null_ll(Pair& p)
 
       doLogit(null_pair);
       null_ll = null_pair.log_likelihood();
+      if (p.log_likelihood() == 0)
+      {
+         std::cerr << "Could not find null log-likelihood for bacterial line " << p.bact_line() << std::endl;
+      }
    }
    else
    {
@@ -144,6 +163,7 @@ double likelihoodRatioTest(Pair& p)
    if (log_likelihood == 0 || null_ll == 0)
    {
       p.add_comment("zero-ll");
+      lrt_p = p.p_val(); // Use the Wald test p-value otherwise
    }
    else
    {
