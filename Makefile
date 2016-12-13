@@ -31,7 +31,7 @@ epistasis: $(OBJECTS)
 	$(LINK.cpp) $^ $(SEER_LDLIBS) -o $@
 
 fisher.o:
-	$(CXX) $(CPPFLAGS) -c -o $@ stats/fisher.c
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c -o $@ stats/fisher.c
 
 .PHONY: all clean install
 
