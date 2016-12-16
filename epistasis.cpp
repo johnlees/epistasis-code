@@ -217,7 +217,7 @@ int main (int argc, char *argv[])
             }
          }
 
-         if (parameters.chunk_start > 1 && parameters.chunk_end > 1 && (human_line_nr >= parameters.chunk_end))
+         if (parameters.chunk_end > 1 && human_line_nr >= parameters.chunk_end)
          {
             human_line_nr--;
             break;
