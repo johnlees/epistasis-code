@@ -234,8 +234,8 @@ int main (int argc, char *argv[])
    }
 
    std::cerr << "Processed " << human_line_nr * bact_line_nr << " total pairs. Of these:\n";
-   std::cerr << "\tPassed maf filter:\t" << read_pairs << std::endl;
-   std::cerr << "\tPassed chi^2 filter:\t" << tested_pairs << std::endl;
+   std::cerr << "\tPassed maf filter:\t\t" << read_pairs << std::endl;
+   std::cerr << "\tPassed chi^2 filter:\t\t" << tested_pairs << std::endl;
    std::cerr << "\tPassed p-val (logistic) filter:\t" << significant_pairs << std::endl;
    std::cerr << "Done.\n";
 }

@@ -10,7 +10,7 @@ BINDIR=$(PREFIX)/bin
 #CXXFLAGS=-Wall -O3 -std=c++11
 # gcc test
 CXXFLAGS=-Wall -g -O0 -std=c++11
-SEER_LDLIBS=-Lgzstream -L$(PREFIX)/lib -lhdf5 -lgzstream -lz -larmadillo -lboost_program_options -llapack -lblas
+EPI_LDLIBS=-Lgzstream -L$(PREFIX)/lib -lhdf5 -lgzstream -lz -larmadillo -lboost_program_options -llapack -lblas
 
 CPPFLAGS=-I$(PREFIX)/include -Igzstream -Idlib -I/usr/local/hdf5/include -D DLIB_NO_GUI_SUPPORT=1 -D DLIB_USE_BLAS=1 -D DLIB_USE_LAPACK=1 -DARMA_USE_HDF5=1
 
@@ -28,7 +28,7 @@ install: all
 	install $(PROGRAMS) $(BINDIR)
 
 epistasis: $(OBJECTS)
-	$(LINK.cpp) $^ $(SEER_LDLIBS) -o $@
+	$(LINK.cpp) $^ $(EPI_LDLIBS) -o $@
 
 fisher.o:
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c -o $@ stats/fisher.c
